@@ -15,9 +15,10 @@ import { formatDistanceToNow } from 'date-fns';
 
 interface BookmarksViewProps {
   onOpenArticle: (article: BookmarkedArticle) => void;
+  onBookmarkChanged?: () => void;
 }
 
-export const BookmarksView: React.FC<BookmarksViewProps> = ({ onOpenArticle }) => {
+export const BookmarksView: React.FC<BookmarksViewProps> = ({ onOpenArticle, onBookmarkChanged }) => {
   const { userProfile } = useAuth();
   const [bookmarks, setBookmarks] = useState<BookmarkedArticle[]>([]);
   const [search, setSearch] = useState('');
@@ -43,6 +44,7 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onOpenArticle }) =
     e.stopPropagation();
     await removeOfflineBookmark(id, userProfile?.uid);
     setBookmarks((prev) => prev.filter((b) => b.id !== id));
+    if (onBookmarkChanged) onBookmarkChanged();
   };
 
   const filtered = bookmarks.filter((b) => {

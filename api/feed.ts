@@ -123,7 +123,15 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const feedUrl = decodeURIComponent(rawUrl);
+    let feedUrl = rawUrl.trim();
+    if (/^https?%3A/i.test(feedUrl)) {
+      try {
+        feedUrl = decodeURIComponent(feedUrl);
+      } catch {
+        // keep feedUrl
+      }
+    }
+
     if (!isSafeUrl(feedUrl)) {
       return res.status(400).json({ ok: false, error: 'Invalid or forbidden feed URL.' });
     }

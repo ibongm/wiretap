@@ -198,7 +198,7 @@ export const Shell: React.FC<ShellProps> = ({
             <button
               onClick={() => handleCategoryClick(null)}
               className={`w-full flex items-center space-x-3 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
-                activeView === 'firehose' && !selectedCategory && !selectedTag
+                activeView === 'firehose' && !selectedCategory && !selectedTag && !selectedFeedId
                   ? 'bg-indigo-600 text-white shadow-sm'
                   : 'text-slate-300 hover:bg-slate-800 hover:text-white'
               }`}

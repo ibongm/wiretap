@@ -223,10 +223,28 @@ export const ReaderDrawer: React.FC<ReaderDrawerProps> = ({
       .finally(() => setLoading(false));
   }, [isOpen, article]);
 
+  // Clean up speech synthesis when drawer closes or unmounts
+  useEffect(() => {
+    if (!isOpen && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+    return () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      setIsSpeaking(false);
+    };
+  }, [isOpen, article]);
+
   // Handle escape key to close
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
+        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          setIsSpeaking(false);
+        }
         onClose();
       }
     };

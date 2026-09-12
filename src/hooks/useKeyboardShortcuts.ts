@@ -22,10 +22,13 @@ export function useKeyboardShortcuts({
 }: KeyboardShortcutsOptions) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if inside input/textarea or if modal is open
+      // Ignore if modifier keys pressed (Ctrl/Cmd/Alt) or inside input/textarea or if modal is open
       const target = e.target as HTMLElement;
       if (
         isModalOpen ||
+        e.metaKey ||
+        e.ctrlKey ||
+        e.altKey ||
         target.tagName === 'INPUT' ||
         target.tagName === 'TEXTAREA' ||
         target.tagName === 'SELECT' ||

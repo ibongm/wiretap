@@ -1,9 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/context/AuthContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { useUserFeeds } from '@/hooks/useUserFeeds';
-import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { Shell } from '@/components/layout/Shell';
 import { Firehose } from '@/components/feed/Firehose';
 import { BookmarksView } from '@/components/bookmarks/BookmarksView';
@@ -12,7 +11,6 @@ import { AddFeedModal } from '@/components/feed/AddFeedModal';
 import { SettingsModal } from '@/components/settings/SettingsModal';
 import { AuthModal } from '@/components/auth/AuthModal';
 import { NormalizedArticle, BookmarkedArticle } from '@/types/wiretap';
-import { saveOfflineBookmark, removeOfflineBookmark, isArticleBookmarked } from '@/services/offlineStorage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,6 +43,11 @@ function WiretapApp() {
   const [activeView, setActiveView] = useState<'firehose' | 'bookmarks'>('firehose');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
+  const [bookmarkVersion, setBookmarkVersion] = useState<number>(0);
+
+  const handleBookmarkChanged = useCallback(() => {
+    setBookmarkVersion((v) => v + 1);
+  }, []);
 
   // Modals & Drawers
   const [readerArticle, setReaderArticle] = useState<NormalizedArticle | BookmarkedArticle | null>(null);
@@ -129,6 +132,8 @@ function WiretapApp() {
             onOpenArticle={handleOpenArticle}
             onToggleRead={toggleArticleRead}
             isModalOpen={isAnyModalOpen}
+            bookmarkVersion={bookmarkVersion}
+            onBookmarkChanged={handleBookmarkChanged}
             onSelectFeed={(feedId) => {
               setSelectedFeedId(feedId);
               setSelectedCategory(null);
@@ -143,7 +148,10 @@ function WiretapApp() {
             }}
           />
         ) : (
-          <BookmarksView onOpenArticle={handleOpenArticle} />
+          <BookmarksView
+            onOpenArticle={handleOpenArticle}
+            onBookmarkChanged={handleBookmarkChanged}
+          />
         )}
 
         {/* Reader Drawer */}
@@ -157,6 +165,7 @@ function WiretapApp() {
             updatePreferences({ readerFont, readerFontSize })
           }
           onArticleRead={(artId) => markArticleAsRead(artId)}
+          onBookmarkChanged={handleBookmarkChanged}
         />
 
         {/* Add Feed Modal */}

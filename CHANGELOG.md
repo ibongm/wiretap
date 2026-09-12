@@ -2,6 +2,29 @@
 
 All notable changes to the Wiretap project will be documented in this file.
 
+### [2026-09-13] - Bug Fixes: Browser Shortcut Conflicts, TTS Leaks, Relative Scraped URLs & Sync
+- **Files Changed**:
+  - `api/article.ts` (Modified)
+  - `api/discover.ts` (Modified)
+  - `api/feed.ts` (Modified)
+  - `src/App.tsx` (Modified)
+  - `src/components/bookmarks/BookmarksView.tsx` (Modified)
+  - `src/components/feed/Firehose.tsx` (Modified)
+  - `src/components/layout/Shell.tsx` (Modified)
+  - `src/components/reader/ReaderDrawer.tsx` (Modified)
+  - `src/hooks/useKeyboardShortcuts.ts` (Modified)
+  - `src/hooks/useUserFeeds.ts` (Modified)
+- **Details**:
+  - **Browser Shortcut Conflict Prevention**: Ignored modifier keys (`e.metaKey`, `e.ctrlKey`, `e.altKey`) in `src/hooks/useKeyboardShortcuts.ts` to prevent Wiretap keybindings from hijacking default browser actions (`Ctrl+B` for bookmarks, `Ctrl+J` for downloads, `Ctrl+O` for open file).
+  - **Web Speech Synthesis Cleanup**: Added cleanup `useEffect` in `src/components/reader/ReaderDrawer.tsx` that calls `window.speechSynthesis.cancel()` whenever the reader drawer is closed or unmounted, preventing zombie audio narration.
+  - **Relative URL Resolution for Scraped Articles**: Updated `sanitizeWithCheerio` and metadata extraction in `api/article.ts` to resolve relative `href`, relative `img src`, and relative `leadImage` against the target article's base URL, eliminating 404 image errors and broken in-article links.
+  - **URI Decoding Hardening**: Protected `api/feed.ts` and `api/article.ts` against `URIError: URI malformed` and double-decoding on already decoded incoming query parameters.
+  - **Discovery SSRF & Favicon Error Handling**: Validated candidate feed URLs against `isSafeUrl` in `api/discover.ts` and wrapped favicon resolution in `try...catch` to prevent serverless function crashes on malformed icon paths.
+  - **Cross-View Bookmark State Sync**: Added `bookmarkVersion` and `handleBookmarkChanged` in `src/App.tsx`, wired into `Firehose.tsx`, `BookmarksView.tsx`, and `ReaderDrawer.tsx`, ensuring offline bookmarks stay 100% synchronized across all views without requiring pagination changes.
+  - **Sidebar Active State Correction**: Updated `src/components/layout/Shell.tsx` to verify `!selectedFeedId` before highlighting the "Full Firehose" button, preventing dual-selection states when viewing a single publication.
+  - **Firestore Undefined Field Crash Protection**: Stripped `undefined` properties in `src/hooks/useUserFeeds.ts` before passing partial updates to Firestore `setDoc(..., { merge: true })`.
+  - **Firehose Performance & Regex Escaping**: Replaced linear $O(N)$ read state scans with memoized $O(1)$ `readSet.has(article.id)` lookups across Cards, Compact, and Minimalist modes in `src/components/feed/Firehose.tsx`, and used `escapeRegExp` in the keyword mute filter to safely match terms with symbols (`c++`, `node.js`).
+
 ### [2026-09-13] - Comprehensive UX, Offline Storage, SSRF Hardening & Reader Enhancements
 - **Files Changed**:
   - `api/article.ts` (Modified)

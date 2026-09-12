@@ -276,8 +276,11 @@ export function useUserFeeds() {
         return;
       }
 
+      const cleanPartial = Object.fromEntries(
+        Object.entries(partial).filter(([_, v]) => v !== undefined)
+      );
       const prefsDoc = doc(firestore, 'users', uid, 'settings', 'preferences');
-      await setDoc(prefsDoc, partial, { merge: true });
+      await setDoc(prefsDoc, cleanPartial, { merge: true });
     },
     [uid, preferences]
   );

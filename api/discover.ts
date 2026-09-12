@@ -158,7 +158,14 @@ export default async function handler(req: any, res: any) {
     const $ = cheerio.load(text);
     const siteTitle = $('title').text().trim() || parsed.hostname;
     const favicon = $('link[rel="icon"], link[rel="shortcut icon"]').attr('href');
-    const faviconUrl = favicon ? new URL(favicon, targetUrl).href : `${parsed.origin}/favicon.ico`;
+    let faviconUrl = `${parsed.origin}/favicon.ico`;
+    if (favicon) {
+      try {
+        faviconUrl = new URL(favicon, targetUrl).href;
+      } catch {
+        faviconUrl = `${parsed.origin}/favicon.ico`;
+      }
+    }
 
     $('link[rel="alternate"]').each((_, elem) => {
       const type = $(elem).attr('type') || '';
@@ -174,7 +181,7 @@ export default async function handler(req: any, res: any) {
         if (href) {
           try {
             const feedUrl = new URL(href, targetUrl).href;
-            if (!discovered.some(f => f.url === feedUrl)) {
+            if (isSafeUrl(feedUrl) && !discovered.some(f => f.url === feedUrl)) {
               discovered.push({
                 title,
                 url: feedUrl,

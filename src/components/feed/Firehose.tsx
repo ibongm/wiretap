@@ -37,6 +37,7 @@ interface FirehoseProps {
   onSelectTag?: (tag: string | null) => void;
   onToggleRead?: (articleId: string) => void;
   isModalOpen?: boolean;
+  bookmarkVersion?: number;
 }
 
 const ITEMS_PER_PAGE = 25;
@@ -55,12 +56,16 @@ export const Firehose: React.FC<FirehoseProps> = ({
   onSelectFeed,
   onSelectTag,
   onToggleRead,
-  isModalOpen = false
+  isModalOpen = false,
+  bookmarkVersion = 0
 }) => {
   const { userProfile } = useAuth();
   const [displayCount, setDisplayCount] = useState<number>(ITEMS_PER_PAGE);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const articleRefs = useRef<(HTMLElement | null)[]>([]);
+
+  // Memoized Set for O(1) read status lookups across filters and JSX cards
+  const readSet = useMemo(() => new Set(preferences.readArticleIds || []), [preferences.readArticleIds]);
 
   // Filter feeds based on active Source, Category, or Feed-level Tag
   const activeFeeds = useMemo(() => {
@@ -150,8 +155,9 @@ export const Firehose: React.FC<FirehoseProps> = ({
         const targetText = `${item.title} ${item.snippet}`;
         return !mutedTerms.some((kw) => {
           try {
-            const reg = new RegExp(`\\b${kw}\\b`, 'i');
-            return reg.test(targetText);
+            const escaped = escapeRegExp(kw);
+            const reg = new RegExp(`\\b${escaped}\\b`, 'i');
+            return reg.test(targetText) || targetText.toLowerCase().includes(kw.toLowerCase());
           } catch {
             return targetText.toLowerCase().includes(kw.toLowerCase());
           }
@@ -178,7 +184,6 @@ export const Firehose: React.FC<FirehoseProps> = ({
     }
 
     // 5. Hide Read Articles Filter
-    const readSet = new Set(preferences.readArticleIds || []);
     const cutoffTimestamp = selectedCategory ? (preferences.readCutoffs || {})[selectedCategory] || 0 : 0;
     if (preferences.hideRead) {
       filtered = filtered.filter((item) => {
@@ -202,7 +207,7 @@ export const Firehose: React.FC<FirehoseProps> = ({
     }
 
     return filtered;
-  }, [queryResults, preferences.mutedKeywords, preferences.activeSort, preferences.readArticleIds, preferences.hideRead, preferences.readCutoffs, searchQuery, selectedTag, selectedCategory, feeds]);
+  }, [queryResults, preferences.mutedKeywords, preferences.activeSort, readSet, preferences.hideRead, preferences.readCutoffs, searchQuery, selectedTag, selectedCategory, feeds]);
 
   // Batch check of bookmarks via single IndexedDB call (O(1) lookups)
   useEffect(() => {
@@ -213,7 +218,7 @@ export const Firehose: React.FC<FirehoseProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [displayCount]);
+  }, [displayCount, bookmarkVersion]);
 
   // Auto-scroll selected article into view on keyboard navigation
   useEffect(() => {
@@ -330,7 +335,7 @@ export const Firehose: React.FC<FirehoseProps> = ({
             const isSelected = selectedIndex === idx;
             const isRead =
               (cutoffTimestamp > 0 && article.pubDate <= cutoffTimestamp) ||
-              (preferences.readArticleIds || []).includes(article.id);
+              readSet.has(article.id);
             const isBookmarked = bookmarkedIds.has(article.id);
 
             return (
@@ -527,7 +532,7 @@ export const Firehose: React.FC<FirehoseProps> = ({
             const isSelected = selectedIndex === idx;
             const isRead =
               (cutoffTimestamp > 0 && article.pubDate <= cutoffTimestamp) ||
-              (preferences.readArticleIds || []).includes(article.id);
+              readSet.has(article.id);
             const isBookmarked = bookmarkedIds.has(article.id);
 
             return (
@@ -668,7 +673,7 @@ export const Firehose: React.FC<FirehoseProps> = ({
             const isSelected = selectedIndex === idx;
             const isRead =
               (cutoffTimestamp > 0 && article.pubDate <= cutoffTimestamp) ||
-              (preferences.readArticleIds || []).includes(article.id);
+              readSet.has(article.id);
             const isBookmarked = bookmarkedIds.has(article.id);
 
             return (

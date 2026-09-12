@@ -1,6 +1,6 @@
 import * as cheerio from 'cheerio';
 
-function sanitizeWithCheerio($: cheerio.CheerioAPI, rootEl: any): string {
+function sanitizeWithCheerio($: cheerio.CheerioAPI, rootEl: any, baseUrl?: string): string {
   // Remove all dangerous or extraneous elements
   $('script, style, noscript, iframe, frame, object, embed, form, input, button, select, textarea, nav, footer, header, aside, svg, .ad, .advertisement, .social-share, .comments, .related-posts', rootEl).remove();
 
@@ -21,19 +21,34 @@ function sanitizeWithCheerio($: cheerio.CheerioAPI, rootEl: any): string {
       }
     }
 
-    // Harden external links
+    // Harden and resolve external links
     if (el.tagName === 'a') {
       const href = $(el).attr('href') || '';
       if (href.toLowerCase().startsWith('javascript:')) {
         $(el).removeAttr('href');
       } else {
+        if (href && baseUrl) {
+          try {
+            $(el).attr('href', new URL(href, baseUrl).href);
+          } catch {
+            // keep href
+          }
+        }
         $(el).attr('target', '_blank');
         $(el).attr('rel', 'noopener noreferrer');
       }
     }
 
-    // Lazy load images
+    // Lazy load and resolve relative images
     if (el.tagName === 'img') {
+      const src = $(el).attr('src') || '';
+      if (src && baseUrl) {
+        try {
+          $(el).attr('src', new URL(src, baseUrl).href);
+        } catch {
+          // keep src
+        }
+      }
       $(el).attr('loading', 'lazy');
     }
   });
@@ -100,7 +115,15 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const cleanUrl = decodeURIComponent(targetUrl.trim());
+    let cleanUrl = targetUrl.trim();
+    if (/^https?%3A/i.test(cleanUrl)) {
+      try {
+        cleanUrl = decodeURIComponent(cleanUrl);
+      } catch {
+        // keep cleanUrl
+      }
+    }
+
     if (!isSafeUrl(cleanUrl)) {
       return res.status(200).json({ ok: false, error: 'Invalid or forbidden article URL.' });
     }
@@ -139,11 +162,20 @@ export default async function handler(req: any, res: any) {
       $('.author, .byline, .author-name').first().text().trim() ||
       null;
 
-    const leadImage =
+    const rawLead =
       $('meta[property="og:image"]').attr('content') ||
       $('meta[name="twitter:image"]').attr('content') ||
       $('article img, main img').first().attr('src') ||
       null;
+
+    let leadImage: string | null = null;
+    if (rawLead) {
+      try {
+        leadImage = new URL(rawLead, cleanUrl).href;
+      } catch {
+        leadImage = rawLead;
+      }
+    }
 
     let publishedAt = Date.now();
     const pubTimeStr =
@@ -203,7 +235,7 @@ export default async function handler(req: any, res: any) {
           }
         }
       }
-      cleanContent = sanitizeWithCheerio($, chosenEl);
+      cleanContent = sanitizeWithCheerio($, chosenEl, cleanUrl);
     } else {
       // Collect substantive paragraphs
       const pWrapper = $('<div></div>');
@@ -213,7 +245,7 @@ export default async function handler(req: any, res: any) {
           pWrapper.append($(el).clone());
         }
       });
-      cleanContent = sanitizeWithCheerio($, pWrapper);
+      cleanContent = sanitizeWithCheerio($, pWrapper, cleanUrl);
     }
 
     if (!cleanContent.trim()) {
