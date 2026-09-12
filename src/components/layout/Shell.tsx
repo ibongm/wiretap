@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Rss,
   Bookmark,
   Sliders,
   Plus,
@@ -129,15 +128,25 @@ export const Shell: React.FC<ShellProps> = ({
         <div className="flex items-center justify-between p-4 border-b border-slate-800/80">
           <div
             onClick={() => handleCategoryClick(null)}
-            className="flex items-center space-x-3 cursor-pointer select-none"
+            className="flex items-center cursor-pointer select-none group min-w-0"
+            title="Full Stream"
           >
-            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-600/30">
-              <Rss className="w-5 h-5 text-white" />
-            </div>
-            {!sidebarCollapsed && (
-              <div>
-                <span className="font-black tracking-tight text-base text-white">WIRETAP</span>
-                <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+            {sidebarCollapsed ? (
+              <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700/60 flex items-center justify-center p-1.5 shadow-md shadow-indigo-950/40 group-hover:border-indigo-500/50 transition-all">
+                <img
+                  src="/wiretap-icon.png"
+                  alt="WIRETAP"
+                  className="w-7 h-7 object-contain drop-shadow-[0_0_8px_rgba(99,102,241,0.3)] group-hover:scale-105 transition-transform"
+                />
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2.5 min-w-0">
+                <img
+                  src="/wiretap-logo.png"
+                  alt="WIRETAP"
+                  className="h-7 w-auto object-contain drop-shadow-[0_0_12px_rgba(99,102,241,0.25)] group-hover:drop-shadow-[0_0_16px_rgba(99,102,241,0.45)] transition-all"
+                />
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 shrink-0">
                   v1.0
                 </span>
               </div>
@@ -386,48 +395,38 @@ export const Shell: React.FC<ShellProps> = ({
             </button>
 
             <div className="flex items-center space-x-2.5 min-w-0">
-              {/* Brand Logo Mark Slot */}
+              {/* Brand Wordmark Logo */}
               <div
                 onClick={() => handleCategoryClick(null)}
-                className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center shadow-md shadow-indigo-600/30 shrink-0 cursor-pointer hover:bg-indigo-500 transition-colors"
-                title="Full Stream"
+                className="flex items-center cursor-pointer select-none shrink-0 group py-1"
+                title="Reset to Full Firehose"
               >
-                <Rss className="w-4 h-4 text-white" />
+                <img
+                  src="/wiretap-logo.png"
+                  alt="WIRETAP"
+                  className="h-5 sm:h-6 w-auto object-contain drop-shadow-[0_0_10px_rgba(99,102,241,0.25)] group-hover:drop-shadow-[0_0_16px_rgba(99,102,241,0.5)] transition-all"
+                />
               </div>
 
-              <div className="min-w-0">
-                <h1 className="text-sm sm:text-base font-bold text-white flex items-center space-x-1.5 truncate">
-                  <span
-                    onClick={() => handleCategoryClick(null)}
-                    className="cursor-pointer hover:text-indigo-300 transition-colors tracking-tight font-black"
-                  >
-                    WIRETAP
-                  </span>
-
+              {/* Dynamic Breadcrumbs */}
+              {(selectedFeed || selectedCategory || selectedTag) && (
+                <div className="flex items-center space-x-1.5 min-w-0">
+                  <span className="text-slate-600 font-normal text-sm">/</span>
                   {selectedFeed ? (
-                    <>
-                      <span className="text-slate-600 font-normal">/</span>
-                      <span className="text-indigo-400 font-semibold truncate max-w-[140px] sm:max-w-none">
-                        {selectedFeed.title}
-                      </span>
-                    </>
+                    <span className="text-indigo-400 font-semibold text-xs sm:text-sm truncate max-w-[140px] sm:max-w-none">
+                      {selectedFeed.title}
+                    </span>
                   ) : selectedCategory ? (
-                    <>
-                      <span className="text-slate-600 font-normal">/</span>
-                      <span className="text-slate-300 font-semibold truncate max-w-[140px] sm:max-w-none">
-                        {selectedCategory}
-                      </span>
-                    </>
+                    <span className="text-slate-300 font-semibold text-xs sm:text-sm truncate max-w-[140px] sm:max-w-none">
+                      {selectedCategory}
+                    </span>
                   ) : selectedTag ? (
-                    <>
-                      <span className="text-slate-600 font-normal">/</span>
-                      <span className="text-indigo-400 font-semibold truncate max-w-[140px] sm:max-w-none">
-                        #{selectedTag}
-                      </span>
-                    </>
+                    <span className="text-indigo-400 font-semibold text-xs sm:text-sm truncate max-w-[140px] sm:max-w-none">
+                      #{selectedTag}
+                    </span>
                   ) : null}
-                </h1>
-              </div>
+                </div>
+              )}
             </div>
           </div>
 

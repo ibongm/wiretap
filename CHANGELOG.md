@@ -2,6 +2,19 @@
 
 All notable changes to the Wiretap project will be documented in this file.
 
+### [2026-09-13] - Custom Distressed Stencil Brand Logo & Icon Integration
+- **Files Changed**:
+  - `public/wiretap-logo.png` (Created)
+  - `public/wiretap-icon.png` (Created)
+  - `src/components/layout/Shell.tsx` (Modified)
+  - `index.html` (Modified)
+- **Details**:
+  - Processed raw high-res user artwork into high-definition transparent PNG assets (`public/wiretap-logo.png` wordmark and `public/wiretap-icon.png` square "W" mark) with smooth alpha transparency, eliminating white paper backgrounds and rendering distressed stencil typography in silver-white (`#F1F5F9`).
+  - Replaced generic Lucide RSS square icon and plain font text in both the sidebar brand header and the top navigation bar with the custom distressed stencil wordmark.
+  - Added ambient indigo neon drop-shadow glow (`drop-shadow-[0_0_10px_rgba(99,102,241,0.25)]`) and interactive hover glow effects to match Wiretap's cyberpunk intelligence theme.
+  - Implemented responsive collapsed sidebar state displaying the distressed "W" stencil mark in a glass container.
+  - Updated `index.html` and apple-touch-icon with the custom `wiretap-icon.png` mark.
+
 ### [2026-09-13] - Deduplicate Reader Lead Image & Fix Category/Source Filtering
 - **Files Changed**:
   - `api/article.ts` (Modified)
