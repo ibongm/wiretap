@@ -2,6 +2,14 @@
 
 All notable changes to the Wiretap project will be documented in this file.
 
+### [2026-09-12] - Pure Cheerio Article Extraction and Sanitization
+- **Files Changed**:
+  - `api/article.ts` (Modified)
+- **Details**:
+  - Replaced `sanitize-html` dependency in `api/article.ts` with custom `sanitizeWithCheerio` traversal to prevent Vercel Serverless module resolution crashes (`FUNCTION_INVOCATION_FAILED`).
+  - Implemented stripping of scripts, inline styles, stylesheets, event handler attributes (`on*`), and dangerous link protocols (`javascript:`).
+  - Hardened external links with `target="_blank"` and `rel="noopener noreferrer"`, and added lazy loading for inline article images.
+
 ### [2026-09-12] - Serverless-Native Article Extractor & GET Endpoint
 - **Files Changed**:
   - `api/article.ts` (Modified)

@@ -1,5 +1,50 @@
 import * as cheerio from 'cheerio';
-import sanitizeHtml from 'sanitize-html';
+
+function sanitizeWithCheerio($: cheerio.CheerioAPI, rootEl: any): string {
+  // Remove all dangerous or extraneous elements
+  $('script, style, noscript, iframe, frame, object, embed, form, input, button, select, textarea, nav, footer, header, aside, svg, .ad, .advertisement, .social-share, .comments, .related-posts', rootEl).remove();
+
+  // Strip all event handlers, inline styles, and dangerous attributes
+  $('*', rootEl).each((_, el: any) => {
+    if (el.attribs) {
+      const attrs = Object.keys(el.attribs);
+      for (const attr of attrs) {
+        if (
+          attr.startsWith('on') ||
+          attr.startsWith('data-') ||
+          attr === 'style' ||
+          attr === 'class' ||
+          attr === 'id'
+        ) {
+          $(el).removeAttr(attr);
+        }
+      }
+    }
+
+    // Harden external links
+    if (el.tagName === 'a') {
+      const href = $(el).attr('href') || '';
+      if (href.toLowerCase().startsWith('javascript:')) {
+        $(el).removeAttr('href');
+      } else {
+        $(el).attr('target', '_blank');
+        $(el).attr('rel', 'noopener noreferrer');
+      }
+    }
+
+    // Lazy load images
+    if (el.tagName === 'img') {
+      $(el).attr('loading', 'lazy');
+    }
+  });
+
+  return $(rootEl).html() || '';
+}
+
+function calculateReadingTime(text: string): number {
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.ceil(words / 200));
+}
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -11,11 +56,9 @@ export default async function handler(req: any, res: any) {
     return res.status(200).end();
   }
 
-  // Support both GET ?url=... and POST { url: ... }
-  let targetUrl = '';
-  if (req.method === 'GET') {
-    targetUrl = (req.query?.url as string) || '';
-  } else {
+  // Extract URL from GET query (?url=...) or POST body ({ url: ... })
+  let targetUrl = (req.query?.url as string) || '';
+  if (!targetUrl && req.body) {
     let body = req.body;
     if (typeof body === 'string') {
       try {
@@ -24,7 +67,7 @@ export default async function handler(req: any, res: any) {
         // ignore
       }
     }
-    targetUrl = body?.url || (req.query?.url as string) || '';
+    targetUrl = body?.url || '';
   }
 
   if (!targetUrl || typeof targetUrl !== 'string') {
@@ -32,28 +75,28 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const cleanTargetUrl = decodeURIComponent(targetUrl.trim());
+    const cleanUrl = decodeURIComponent(targetUrl.trim());
 
-    // Fetch with 6-second timeout to safely stay under Vercel lambda limits
-    const response = await fetch(cleanTargetUrl, {
+    // Fetch article HTML with 7-second abort signal
+    const response = await fetch(cleanUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Wiretap/1.0',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
       },
-      signal: AbortSignal.timeout(6000)
+      signal: AbortSignal.timeout(7000)
     });
 
     if (!response.ok) {
       return res.status(200).json({
         ok: false,
-        error: `Publisher returned HTTP ${response.status}`
+        error: `Publisher returned status HTTP ${response.status}`
       });
     }
 
     const html = await response.text();
     const $ = cheerio.load(html);
 
-    // 1. Metadata extraction
+    // 1. Extract Metadata
     const title =
       $('meta[property="og:title"]').attr('content') ||
       $('meta[name="twitter:title"]').attr('content') ||
@@ -83,10 +126,7 @@ export default async function handler(req: any, res: any) {
       if (!isNaN(parsed)) publishedAt = parsed;
     }
 
-    // 2. Remove layout junk, advertisements, and scripts
-    $('script, style, noscript, iframe, nav, footer, header, form, aside, .advertisement, .ad, .social-share, .comments, .related-posts').remove();
-
-    // 3. Candidate article container search
+    // 2. Identify candidate article body
     const candidates = [
       'article',
       'main',
@@ -100,74 +140,54 @@ export default async function handler(req: any, res: any) {
       '#article-body'
     ];
 
-    let bodyHtml = '';
+    let chosenEl: any = null;
     for (const selector of candidates) {
       const el = $(selector);
       if (el.length > 0 && el.text().trim().length > 150) {
-        bodyHtml = el.html() || '';
+        chosenEl = el.first();
         break;
       }
     }
 
-    // Fallback to substantial paragraphs if no container matched
-    if (!bodyHtml) {
-      const paragraphs: string[] = [];
+    let cleanContent = '';
+    if (chosenEl) {
+      cleanContent = sanitizeWithCheerio($, chosenEl);
+    } else {
+      // Collect substantive paragraphs
+      const pWrapper = $('<div></div>');
       $('p').each((_, el) => {
-        const pText = $(el).text().trim();
-        if (pText.length > 35) {
-          paragraphs.push($(el).prop('outerHTML') || '');
+        const text = $(el).text().trim();
+        if (text.length > 35) {
+          pWrapper.append($(el).clone());
         }
       });
-      bodyHtml = paragraphs.join('\n');
+      cleanContent = sanitizeWithCheerio($, pWrapper);
     }
 
-    if (!bodyHtml.trim()) {
+    if (!cleanContent.trim()) {
       return res.status(200).json({
         ok: false,
         error: 'Publisher site structure could not be parsed for full text extraction.'
       });
     }
 
-    // 4. Sanitize HTML strictly preserving typography while stripping trackers & scripts
-    const cleanHtml = sanitizeHtml(bodyHtml, {
-      allowedTags: [
-        'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-        'p', 'a', 'b', 'i', 'strong', 'em', 'strike', 'code', 'pre',
-        'hr', 'br', 'div', 'table', 'thead', 'tbody', 'tr', 'th', 'td',
-        'ul', 'ol', 'li', 'blockquote', 'figure', 'figcaption', 'img', 'picture', 'source', 'time', 'span'
-      ],
-      allowedAttributes: {
-        a: ['href', 'name', 'target', 'rel'],
-        img: ['src', 'alt', 'title', 'width', 'height', 'loading'],
-        source: ['srcset', 'media', 'type'],
-        blockquote: ['cite'],
-        time: ['datetime']
-      },
-      allowedSchemes: ['http', 'https', 'mailto'],
-      transformTags: {
-        a: sanitizeHtml.simpleTransform('a', { target: '_blank', rel: 'noopener noreferrer' })
-      }
-    });
-
-    // 5. Reading time estimation (200 wpm)
-    const textOnly = sanitizeHtml(cleanHtml, { allowedTags: [] });
-    const words = textOnly.trim().split(/\s+/).filter(Boolean).length;
-    const readingTimeMinutes = Math.max(1, Math.ceil(words / 200));
+    const textOnly = $(cleanContent).text();
+    const readingTimeMinutes = calculateReadingTime(textOnly);
 
     return res.status(200).json({
       ok: true,
       article: {
         title,
         author,
-        content: cleanHtml,
+        content: cleanContent,
         leadImageUrl: leadImage,
         publishedAt,
         readingTimeMinutes,
-        url: cleanTargetUrl
+        url: cleanUrl
       }
     });
   } catch (err: any) {
-    console.error(`Error in /api/article for ${targetUrl}:`, err);
+    console.error(`Extraction error for ${targetUrl}:`, err);
     return res.status(200).json({
       ok: false,
       error: err.message || 'An error occurred while extracting the article'
