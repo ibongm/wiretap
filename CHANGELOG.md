@@ -2,6 +2,22 @@
 
 All notable changes to the Wiretap project will be documented in this file.
 
+### [2026-09-13] - PWA Screenshots, Standardized Icons & Manifest Expansion
+- **Files Changed**:
+  - `public/apple-touch-icon.png` (Created)
+  - `public/favicon.ico` (Created)
+  - `public/pwa-192x192.png` (Created)
+  - `public/pwa-512x512.png` (Created)
+  - `public/screenshot-desktop.png` (Created)
+  - `public/screenshot-desktop1.png` (Created)
+  - `public/screenshot-desktop2.png` (Created)
+  - `public/screenshot-mobile.png` (Created)
+  - `vite.config.ts` (Modified)
+- **Details**:
+  - Added desktop and mobile promotional screenshots (`screenshot-desktop.png`, `screenshot-mobile.png`, `screenshot-desktop1.png`, `screenshot-desktop2.png`) for rich PWA app store install previews.
+  - Added standardized PWA manifest icons (`pwa-192x192.png`, `pwa-512x512.png`), `apple-touch-icon.png`, and `favicon.ico`.
+  - Expanded `VitePWA` manifest in `vite.config.ts` with categories (`news`, `magazines`, `productivity`), orientation, and maskable icons, while preserving `apiDevPlugin` for seamless local API route execution.
+
 ### [2026-09-13] - High-Resolution PWA App Icons & Web Manifest Integration
 - **Files Changed**:
   - `public/wiretap-logo 192x192.png` (Created)

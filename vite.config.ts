@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { fileURLToPath, URL } from 'node:url';
+
 import path from 'path';
 
 function apiDevPlugin() {
@@ -82,37 +84,71 @@ export default defineConfig({
     apiDevPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'wiretap-icon.png', 'wiretap-logo.png', 'wiretap-logo-192x192.png', 'wiretap-logo-512x512.png'],
+      includeAssets: [
+        'favicon.ico',
+        'apple-touch-icon.png',
+        'pwa-192x192.png',
+        'pwa-512x512.png',
+        'screenshot-mobile.png',
+        'screenshot-desktop.png'
+      ],
       manifest: {
-        name: 'Wiretap — Editorial Intelligence Engine',
+        name: 'Wiretap',
         short_name: 'Wiretap',
         description: 'High-density personal news aggregator and editorial reading engine',
-        theme_color: '#0F172A',
-        background_color: '#0F172A',
+        id: '/',
+        start_url: '/',
+        scope: '/',
         display: 'standalone',
+        orientation: 'any',
+        background_color: '#0f172a',
+        theme_color: '#0f172a',
+        categories: ['news', 'magazines', 'productivity'],
         icons: [
           {
-            src: '/wiretap-logo-192x192.png',
+            src: '/pwa-192x192.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any'
           },
           {
-            src: '/wiretap-logo-512x512.png',
+            src: '/pwa-512x512.png',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any'
           },
           {
-            src: '/wiretap-icon.png',
+            src: '/pwa-512x512.png',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'maskable'
+          }
+        ],
+        screenshots: [
+          {
+            src: '/screenshot-mobile.png',
+            sizes: '1080x1920',
+            type: 'image/png',
+            form_factor: 'narrow',
+            label: 'Wiretap Mobile Feed'
+          },
+          {
+            src: '/screenshot-desktop.png',
+            sizes: '1920x1080',
+            type: 'image/png',
+            form_factor: 'wide',
+            label: 'Wiretap Desktop Dashboard'
           }
         ]
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}']
       }
     })
   ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src')
+      '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   }
 });
