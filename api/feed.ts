@@ -29,6 +29,8 @@ interface CustomFeedItem {
     length?: number;
   };
   'content:encoded'?: string;
+  rawContent?: string;
+  rawDescription?: string;
 }
 
 const parser = new Parser<Record<string, unknown>, CustomFeedItem>({
@@ -37,7 +39,9 @@ const parser = new Parser<Record<string, unknown>, CustomFeedItem>({
       ['media:content', 'media:content'],
       ['media:thumbnail', 'media:thumbnail'],
       ['enclosure', 'enclosure'],
-      ['content:encoded', 'content:encoded']
+      ['content:encoded', 'content:encoded'],
+      ['content', 'rawContent', { keepArray: false }],
+      ['description', 'rawDescription', { keepArray: false }]
     ]
   },
   headers: {
@@ -63,8 +67,15 @@ function stripHtml(html: string): string {
 
 function extractImageFromHtml(html?: string): string | undefined {
   if (!html) return undefined;
-  const match = html.match(/<img[^>]+src=["']([^"']+)["']/i);
-  return match ? match[1] : undefined;
+  // Match src in <img> tag, handling single, double or unquoted attributes
+  const match = html.match(/<img[^>]+src=["']?([^"'>\s]+)["']?/i);
+  if (!match) return undefined;
+  const src = match[1];
+  // Filter out tiny 1x1 tracking beacons / spacer gifs
+  if (src.includes('1x1') || src.includes('tracking') || src.includes('beacon') || src.includes('pixel')) {
+    return undefined;
+  }
+  return src;
 }
 
 function hashString(input: string): string {
@@ -93,21 +104,44 @@ export default async function handler(req: any, res: any) {
     const siteUrl = parsedFeed.link || new URL(feedUrl).origin;
     const feedTitle = parsedFeed.title || 'Untitled Feed';
 
+    let domain = '';
+    try {
+      domain = new URL(siteUrl).hostname;
+    } catch {
+      try {
+        domain = new URL(feedUrl).hostname;
+      } catch {
+        domain = '';
+      }
+    }
+    const faviconUrl = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=128` : undefined;
+
     const items = (parsedFeed.items || []).map((item) => {
       const link = item.link || item.guid || '';
       const id = hashString(link || item.title || Math.random().toString());
 
-      // Extract thumbnail
+      // Extract thumbnail with multiple fallbacks
       let thumbnail =
         item['media:thumbnail']?.$?.url ||
         item['media:content']?.$?.url;
 
-      if (!thumbnail && item.enclosure?.url && item.enclosure?.type?.startsWith('image')) {
-        thumbnail = item.enclosure.url;
+      if (!thumbnail && item.enclosure?.url) {
+        const encType = item.enclosure.type || '';
+        const encUrl = item.enclosure.url;
+        if (encType.startsWith('image') || /\.(jpe?g|png|webp|gif|avif)(\?.*)?$/i.test(encUrl)) {
+          thumbnail = encUrl;
+        }
       }
 
       if (!thumbnail) {
-        thumbnail = extractImageFromHtml(item['content:encoded'] || item.content || item.contentSnippet);
+        thumbnail =
+          extractImageFromHtml(item['content:encoded']) ||
+          extractImageFromHtml(item.rawContent) ||
+          extractImageFromHtml(item.rawDescription) ||
+          extractImageFromHtml(item.content) ||
+          extractImageFromHtml(item.description) ||
+          extractImageFromHtml(item.summary) ||
+          extractImageFromHtml(item.contentSnippet);
       }
 
       // Format pubDate
@@ -122,7 +156,7 @@ export default async function handler(req: any, res: any) {
       }
 
       // Format snippet
-      const rawText = item.contentSnippet || item.summary || item['content:encoded'] || item.content || '';
+      const rawText = item.contentSnippet || item.summary || item['content:encoded'] || item.content || item.description || '';
       const snippet = stripHtml(rawText).slice(0, 280);
 
       return {
@@ -133,7 +167,8 @@ export default async function handler(req: any, res: any) {
         pubDate,
         author: item.creator || (item as any).author || undefined,
         snippet,
-        thumbnail: thumbnail || undefined
+        thumbnail: thumbnail || undefined,
+        faviconUrl
       };
     });
 
@@ -142,6 +177,7 @@ export default async function handler(req: any, res: any) {
       feed: {
         title: feedTitle,
         siteUrl,
+        faviconUrl,
         description: parsedFeed.description || '',
         items
       }

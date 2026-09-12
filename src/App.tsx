@@ -38,6 +38,7 @@ function WiretapApp() {
 
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedFeedId, setSelectedFeedId] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'firehose' | 'bookmarks'>('firehose');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
@@ -93,14 +94,25 @@ function WiretapApp() {
         preferences={preferences}
         selectedCategory={selectedCategory}
         selectedTag={selectedTag}
+        selectedFeedId={selectedFeedId}
         activeView={activeView}
         searchQuery={searchQuery}
         onSelectCategory={(cat) => {
           setSelectedCategory(cat);
+          setSelectedFeedId(null);
+          setSelectedTag(null);
           setSelectedIndex(0);
         }}
         onSelectTag={(tag) => {
           setSelectedTag(tag);
+          setSelectedFeedId(null);
+          setSelectedCategory(null);
+          setSelectedIndex(0);
+        }}
+        onSelectFeed={(feedId) => {
+          setSelectedFeedId(feedId);
+          setSelectedCategory(null);
+          setSelectedTag(null);
           setSelectedIndex(0);
         }}
         onSelectView={(v) => {
@@ -122,6 +134,7 @@ function WiretapApp() {
             preferences={preferences}
             selectedCategory={selectedCategory}
             selectedTag={selectedTag}
+            selectedFeedId={selectedFeedId}
             searchQuery={searchQuery}
             selectedIndex={selectedIndex}
             onSelectArticle={setSelectedIndex}

@@ -14,12 +14,14 @@ import {
 } from 'lucide-react';
 import { isArticleBookmarked, saveOfflineBookmark, removeOfflineBookmark } from '@/services/offlineStorage';
 import { useAuth } from '@/context/AuthContext';
+import { getSmartTagsForArticle } from '@/utils/smartTags';
 
 interface FirehoseProps {
   feeds: SubscribedFeed[];
   preferences: UserPreferences;
   selectedCategory: string | null;
   selectedTag: string | null;
+  selectedFeedId?: string | null;
   searchQuery: string;
   selectedIndex: number;
   onSelectArticle: (index: number) => void;
@@ -34,6 +36,7 @@ export const Firehose: React.FC<FirehoseProps> = ({
   preferences,
   selectedCategory,
   selectedTag,
+  selectedFeedId,
   searchQuery,
   selectedIndex,
   onSelectArticle,
@@ -44,18 +47,18 @@ export const Firehose: React.FC<FirehoseProps> = ({
   const [displayCount, setDisplayCount] = useState<number>(ITEMS_PER_PAGE);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
 
-  // Filter feeds based on active Category or Tag
+  // Filter feeds based on active Source, Category, or Feed-level Tag
   const activeFeeds = useMemo(() => {
     return feeds.filter((f) => {
-      if (selectedCategory && f.category !== selectedCategory) {
+      if (selectedFeedId && f.id !== selectedFeedId) {
         return false;
       }
-      if (selectedTag && (!f.tags || !f.tags.includes(selectedTag))) {
+      if (selectedCategory && f.category !== selectedCategory) {
         return false;
       }
       return true;
     });
-  }, [feeds, selectedCategory, selectedTag]);
+  }, [feeds, selectedFeedId, selectedCategory]);
 
   // Fetch feeds in parallel using TanStack Query
   const queryResults = useQueries({
@@ -74,7 +77,8 @@ export const Firehose: React.FC<FirehoseProps> = ({
           items: (data.feed?.items || []).map((item: any) => ({
             ...item,
             feedId: feed.id,
-            sourceTitle: feed.title
+            sourceTitle: feed.title,
+            faviconUrl: item.faviconUrl || feed.faviconUrl
           }))
         };
       },
@@ -91,32 +95,52 @@ export const Firehose: React.FC<FirehoseProps> = ({
     const rawList: NormalizedArticle[] = [];
     const seenLinks = new Set<string>();
 
-    // 1. Merge all items
+    // 1. Merge all items and assign smart topic tags
     for (const res of queryResults) {
       if (res.data?.items) {
         for (const item of res.data.items) {
           const key = item.link || item.id;
           if (!seenLinks.has(key)) {
             seenLinks.add(key);
-            rawList.push(item);
+            const smartTags = getSmartTagsForArticle(item.title, item.snippet);
+            rawList.push({
+              ...item,
+              smartTags
+            });
           }
         }
       }
     }
 
-    // 2. Apply Bullshit Filter (Muted Keywords Regex)
+    // 2. Filter by selectedTag (matching smart topic tags or feed-level tags)
+    let filtered = rawList;
+    if (selectedTag) {
+      const targetTag = selectedTag.toLowerCase();
+      filtered = filtered.filter((item) => {
+        if (item.smartTags?.some((t) => t.toLowerCase() === targetTag)) {
+          return true;
+        }
+        const parentFeed = feeds.find((f) => f.id === item.feedId);
+        if (parentFeed?.tags?.some((t) => t.toLowerCase() === targetTag)) {
+          return true;
+        }
+        return false;
+      });
+    }
+
+    // 3. Apply Bullshit Filter (Muted Keywords Regex)
     const mutedPatterns = (preferences.mutedKeywords || [])
       .map((kw) => kw.trim())
       .filter(Boolean)
       .map((kw) => new RegExp(`\\b${escapeRegExp(kw)}\\b`, 'i'));
 
-    let filtered = rawList.filter((item) => {
+    filtered = filtered.filter((item) => {
       if (mutedPatterns.length === 0) return true;
       const targetText = `${item.title} ${item.snippet}`;
       return !mutedPatterns.some((pattern) => pattern.test(targetText));
     });
 
-    // 3. Apply Real-Time Search Query (Regex or Substring)
+    // 4. Apply Real-Time Search Query (Regex or Substring)
     if (searchQuery.trim()) {
       try {
         const searchRegex = new RegExp(searchQuery.trim(), 'i');
@@ -149,7 +173,7 @@ export const Firehose: React.FC<FirehoseProps> = ({
     }
 
     return filtered;
-  }, [queryResults, preferences.mutedKeywords, preferences.activeSort, searchQuery]);
+  }, [queryResults, preferences.mutedKeywords, preferences.activeSort, searchQuery, selectedTag, feeds]);
 
   // Initial check of bookmarks for visible articles
   React.useEffect(() => {
@@ -257,7 +281,7 @@ export const Firehose: React.FC<FirehoseProps> = ({
                     : 'border-slate-800 hover:border-slate-700 hover:shadow-md'
                 } ${isRead ? 'opacity-65' : 'opacity-100'}`}
               >
-                {/* Hero Thumbnail */}
+                {/* Hero Thumbnail or Publisher Favicon Header */}
                 {article.thumbnail ? (
                   <div className="relative h-44 w-full bg-slate-950 overflow-hidden">
                     <img
@@ -272,18 +296,58 @@ export const Firehose: React.FC<FirehoseProps> = ({
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-60" />
                   </div>
                 ) : (
-                  <div className="h-2 w-full bg-gradient-to-r from-indigo-600/30 to-purple-600/30" />
+                  <div className="h-28 w-full bg-gradient-to-br from-slate-900 via-slate-850 to-indigo-950/40 border-b border-slate-800 flex items-center justify-between px-6">
+                    {article.faviconUrl ? (
+                      <div className="w-12 h-12 rounded-2xl bg-slate-800/90 border border-slate-700/60 flex items-center justify-center p-2.5 shadow-md">
+                        <img
+                          src={article.faviconUrl}
+                          alt=""
+                          className="w-7 h-7 object-contain rounded"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-12 h-12 rounded-2xl bg-slate-800 border border-slate-700/60 flex items-center justify-center text-slate-400 font-bold text-sm shadow">
+                        {article.sourceTitle.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
+
+                    {article.smartTags && article.smartTags.length > 0 && (
+                      <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 shadow-sm">
+                        #{article.smartTags[0]}
+                      </span>
+                    )}
+                  </div>
                 )}
 
                 {/* Card Content */}
                 <div className="flex-1 p-5 flex flex-col justify-between">
                   <div>
-                    {/* Source & Date Pill */}
-                    <div className="flex items-center justify-between text-xs text-slate-400 mb-2.5">
-                      <span className="font-semibold text-indigo-400 truncate max-w-[180px]">
-                        {article.sourceTitle}
-                      </span>
-                      <span className="text-[11px] flex items-center text-slate-500 whitespace-nowrap">
+                    {/* Source, Tag & Date Pill */}
+                    <div className="flex items-center justify-between text-xs text-slate-400 mb-2.5 gap-2">
+                      <div className="flex items-center space-x-1.5 min-w-0">
+                        {article.thumbnail && article.faviconUrl && (
+                          <img
+                            src={article.faviconUrl}
+                            alt=""
+                            className="w-3.5 h-3.5 rounded shrink-0"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        )}
+                        <span className="font-semibold text-indigo-400 truncate max-w-[140px]">
+                          {article.sourceTitle}
+                        </span>
+                        {article.thumbnail && article.smartTags && article.smartTags.length > 0 && (
+                          <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-indigo-500/15 text-indigo-300 border border-indigo-500/20 shrink-0">
+                            #{article.smartTags[0]}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] flex items-center text-slate-500 whitespace-nowrap shrink-0">
                         <Clock className="w-3 h-3 mr-1 shrink-0" />
                         {formatDistanceToNow(new Date(article.pubDate), { addSuffix: true })}
                       </span>
@@ -360,19 +424,30 @@ export const Firehose: React.FC<FirehoseProps> = ({
                 } ${isRead ? 'opacity-60' : 'opacity-100'}`}
               >
                 <div className="flex items-center space-x-3.5 min-w-0 flex-1 mr-4">
-                  {/* Small 48x48 thumbnail */}
+                  {/* Small 48x48 thumbnail or Publisher Favicon Fallback */}
                   {article.thumbnail ? (
                     <img
                       src={article.thumbnail}
                       alt=""
                       loading="lazy"
-                      className="w-12 h-12 rounded-lg object-cover bg-slate-950 shrink-0 border border-slate-800"
+                      className="w-12 h-12 rounded-xl object-cover bg-slate-950 shrink-0 border border-slate-800"
                       onError={(e) => {
                         (e.target as HTMLElement).style.display = 'none';
                       }}
                     />
+                  ) : article.faviconUrl ? (
+                    <div className="w-12 h-12 rounded-xl bg-slate-800/90 border border-slate-700/60 flex items-center justify-center shrink-0 p-2.5 shadow-sm">
+                      <img
+                        src={article.faviconUrl}
+                        alt=""
+                        className="w-6 h-6 object-contain rounded"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                    </div>
                   ) : (
-                    <div className="w-12 h-12 rounded-lg bg-slate-800 border border-slate-700/50 flex items-center justify-center shrink-0 text-slate-500 font-bold text-xs">
+                    <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700/50 flex items-center justify-center shrink-0 text-slate-400 font-bold text-xs">
                       {article.sourceTitle.slice(0, 2).toUpperCase()}
                     </div>
                   )}
@@ -382,6 +457,11 @@ export const Firehose: React.FC<FirehoseProps> = ({
                       <span className="font-semibold text-indigo-400 truncate max-w-[140px]">
                         {article.sourceTitle}
                       </span>
+                      {article.smartTags && article.smartTags.length > 0 && (
+                        <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-indigo-500/15 text-indigo-300 border border-indigo-500/20">
+                          #{article.smartTags[0]}
+                        </span>
+                      )}
                       <span>•</span>
                       <span className="text-[11px] text-slate-500">
                         {formatDistanceToNow(new Date(article.pubDate), { addSuffix: true })}

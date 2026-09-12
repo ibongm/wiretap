@@ -22,16 +22,19 @@ import {
 } from 'lucide-react';
 import { SubscribedFeed, UserPreferences } from '@/types/wiretap';
 import { useAuth } from '@/context/AuthContext';
+import { ALL_SMART_TAGS } from '@/utils/smartTags';
 
 interface ShellProps {
   feeds: SubscribedFeed[];
   preferences: UserPreferences;
   selectedCategory: string | null;
   selectedTag: string | null;
+  selectedFeedId?: string | null;
   activeView: 'firehose' | 'bookmarks';
   searchQuery: string;
   onSelectCategory: (category: string | null) => void;
   onSelectTag: (tag: string | null) => void;
+  onSelectFeed?: (feedId: string | null) => void;
   onSelectView: (view: 'firehose' | 'bookmarks') => void;
   onSearchChange: (query: string) => void;
   onDensityChange: (density: 'cards' | 'compact' | 'minimal') => void;
@@ -49,10 +52,12 @@ export const Shell: React.FC<ShellProps> = ({
   preferences,
   selectedCategory,
   selectedTag,
+  selectedFeedId,
   activeView,
   searchQuery,
   onSelectCategory,
   onSelectTag,
+  onSelectFeed,
   onSelectView,
   onSearchChange,
   onDensityChange,
@@ -72,14 +77,18 @@ export const Shell: React.FC<ShellProps> = ({
   // Group feeds by category
   const categories = Array.from(new Set(feeds.map((f) => f.category || 'General'))).sort();
 
-  // Extract all unique tags
+  // Extract all unique tags combining smart topics and feed tags
   const allTags = Array.from(
-    new Set(feeds.flatMap((f) => f.tags || []))
-  ).sort();
+    new Set([
+      ...ALL_SMART_TAGS,
+      ...feeds.flatMap((f) => f.tags || [])
+    ])
+  );
 
   const handleCategoryClick = (cat: string | null) => {
     onSelectCategory(cat);
     onSelectTag(null);
+    onSelectFeed?.(null);
     onSelectView('firehose');
     setMobileMenuOpen(false);
   };
@@ -90,10 +99,25 @@ export const Shell: React.FC<ShellProps> = ({
     } else {
       onSelectTag(tag);
       onSelectCategory(null);
+      onSelectFeed?.(null);
     }
     onSelectView('firehose');
     setMobileMenuOpen(false);
   };
+
+  const handleFeedClick = (feedId: string) => {
+    if (selectedFeedId === feedId) {
+      onSelectFeed?.(null);
+    } else {
+      onSelectFeed?.(feedId);
+      onSelectCategory(null);
+      onSelectTag(null);
+    }
+    onSelectView('firehose');
+    setMobileMenuOpen(false);
+  };
+
+  const selectedFeed = feeds.find((f) => f.id === selectedFeedId);
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 font-sans">
@@ -209,7 +233,75 @@ export const Shell: React.FC<ShellProps> = ({
             </div>
           )}
 
-          {/* Tags List */}
+          {/* Feed Manager List */}
+          {!sidebarCollapsed && (
+            <div>
+              <div className="flex items-center justify-between px-3 mb-2">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  Subscribed ({feeds.length})
+                </span>
+                <button
+                  onClick={() => setEditingFeeds(!editingFeeds)}
+                  className="text-[11px] text-indigo-400 hover:text-indigo-300 transition-colors"
+                >
+                  {editingFeeds ? 'Done' : 'Manage'}
+                </button>
+              </div>
+
+              <div className="space-y-0.5">
+                {feeds.map((feed) => {
+                  const isSelected = activeView === 'firehose' && selectedFeedId === feed.id;
+                  return (
+                    <div
+                      key={feed.id}
+                      onClick={() => handleFeedClick(feed.id)}
+                      className={`flex items-center justify-between px-3 py-1.5 rounded-xl text-xs transition-colors cursor-pointer group ${
+                        isSelected
+                          ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 font-medium'
+                          : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2.5 min-w-0 flex-1 mr-2">
+                        {feed.faviconUrl ? (
+                          <img
+                            src={feed.faviconUrl}
+                            alt=""
+                            className="w-3.5 h-3.5 rounded shrink-0"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <span
+                            className={`w-2 h-2 rounded-full shrink-0 ${
+                              feed.healthStatus === 'failing' ? 'bg-rose-500' : 'bg-emerald-500'
+                            }`}
+                            title={feed.healthStatus === 'failing' ? 'Feed error reported' : 'Feed healthy'}
+                          />
+                        )}
+                        <span className="truncate">{feed.title}</span>
+                      </div>
+
+                      {editingFeeds ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteFeed(feed.id);
+                          }}
+                          title="Unsubscribe feed"
+                          className="text-slate-500 hover:text-rose-400 p-1 rounded transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Tags List (Underneath Subscribed) */}
           {!sidebarCollapsed && allTags.length > 0 && (
             <div>
               <div className="flex items-center justify-between px-3 mb-2">
@@ -235,52 +327,6 @@ export const Shell: React.FC<ShellProps> = ({
                     </button>
                   );
                 })}
-              </div>
-            </div>
-          )}
-
-          {/* Feed Manager List */}
-          {!sidebarCollapsed && (
-            <div>
-              <div className="flex items-center justify-between px-3 mb-2">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                  Subscribed ({feeds.length})
-                </span>
-                <button
-                  onClick={() => setEditingFeeds(!editingFeeds)}
-                  className="text-[11px] text-indigo-400 hover:text-indigo-300 transition-colors"
-                >
-                  {editingFeeds ? 'Done' : 'Manage'}
-                </button>
-              </div>
-
-              <div className="space-y-1">
-                {feeds.map((feed) => (
-                  <div
-                    key={feed.id}
-                    className="flex items-center justify-between px-3 py-1.5 rounded-xl text-xs text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 transition-colors group"
-                  >
-                    <div className="flex items-center space-x-2 min-w-0 flex-1 mr-2">
-                      <span
-                        className={`w-2 h-2 rounded-full shrink-0 ${
-                          feed.healthStatus === 'failing' ? 'bg-rose-500' : 'bg-emerald-500'
-                        }`}
-                        title={feed.healthStatus === 'failing' ? 'Feed error reported' : 'Feed healthy'}
-                      />
-                      <span className="truncate">{feed.title}</span>
-                    </div>
-
-                    {editingFeeds && (
-                      <button
-                        onClick={() => onDeleteFeed(feed.id)}
-                        title="Unsubscribe feed"
-                        className="text-slate-500 hover:text-rose-400 p-1 rounded transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                ))}
               </div>
             </div>
           )}
@@ -332,28 +378,72 @@ export const Shell: React.FC<ShellProps> = ({
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Header Bar */}
         <header className="h-16 border-b border-slate-800 bg-slate-900/80 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between gap-4 z-20">
-          {/* Mobile hamburger */}
-          <div className="flex items-center space-x-3">
+          {/* Mobile hamburger & Brand/Breadcrumb */}
+          <div className="flex items-center space-x-3 min-w-0">
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800"
+              className="lg:hidden p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 shrink-0"
             >
               <Menu className="w-5 h-5" />
             </button>
 
-            <div>
-              <h1 className="text-sm sm:text-base font-bold text-white flex items-center space-x-2">
-                <span>{selectedCategory || (selectedTag ? `#${selectedTag}` : 'Firehose')}</span>
-                {selectedCategory && (
-                  <span className="text-xs text-slate-500 font-normal hidden sm:inline">
-                    • {feeds.filter((f) => f.category === selectedCategory).length} feeds
+            <div className="flex items-center space-x-2.5 min-w-0">
+              {/* Brand Logo Mark Slot */}
+              <div
+                onClick={() => {
+                  onSelectCategory(null);
+                  onSelectTag(null);
+                  onSelectFeed?.(null);
+                  onSelectView('firehose');
+                }}
+                className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center shadow-md shadow-indigo-600/30 shrink-0 cursor-pointer hover:bg-indigo-500 transition-colors"
+                title="Full Stream"
+              >
+                <Rss className="w-4 h-4 text-white" />
+              </div>
+
+              <div className="min-w-0">
+                <h1 className="text-sm sm:text-base font-bold text-white flex items-center space-x-1.5 truncate">
+                  <span
+                    onClick={() => {
+                      onSelectCategory(null);
+                      onSelectTag(null);
+                      onSelectFeed?.(null);
+                      onSelectView('firehose');
+                    }}
+                    className="cursor-pointer hover:text-indigo-300 transition-colors tracking-tight font-black"
+                  >
+                    WIRETAP
                   </span>
-                )}
-              </h1>
+
+                  {selectedFeed ? (
+                    <>
+                      <span className="text-slate-600 font-normal">/</span>
+                      <span className="text-indigo-400 font-semibold truncate max-w-[140px] sm:max-w-none">
+                        {selectedFeed.title}
+                      </span>
+                    </>
+                  ) : selectedCategory ? (
+                    <>
+                      <span className="text-slate-600 font-normal">/</span>
+                      <span className="text-slate-300 font-semibold truncate max-w-[140px] sm:max-w-none">
+                        {selectedCategory}
+                      </span>
+                    </>
+                  ) : selectedTag ? (
+                    <>
+                      <span className="text-slate-600 font-normal">/</span>
+                      <span className="text-indigo-400 font-semibold truncate max-w-[140px] sm:max-w-none">
+                        #{selectedTag}
+                      </span>
+                    </>
+                  ) : null}
+                </h1>
+              </div>
             </div>
           </div>
 
-          {/* Search bar */}
+          {/* Search bar (desktop) */}
           <div className="flex-1 max-w-md hidden md:block">
             <div className="relative">
               <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
@@ -361,7 +451,7 @@ export const Shell: React.FC<ShellProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
-                placeholder="Instant headline filter (regex supported)..."
+                placeholder="Search headlines and keywords..."
                 className="w-full pl-9 pr-3 py-1.5 bg-slate-800/80 border border-slate-700/80 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
               {searchQuery && (
@@ -389,7 +479,7 @@ export const Shell: React.FC<ShellProps> = ({
               </button>
             )}
 
-            {/* Sort Mode Select */}
+            {/* Sort Mode Select (Desktop) */}
             <div className="relative hidden sm:flex items-center">
               <select
                 value={preferences.activeSort || 'newest'}
@@ -442,17 +532,38 @@ export const Shell: React.FC<ShellProps> = ({
           </div>
         </header>
 
-        {/* Mobile Search Bar */}
-        <div className="p-3 border-b border-slate-800/60 md:hidden bg-slate-900">
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+        {/* Mobile / Tablet Sub-Header Toolbar (Search & Sort Filters) */}
+        <div className="flex md:hidden items-center justify-between px-3 py-2 border-b border-slate-800 bg-slate-900/90 gap-2 z-10">
+          <div className="relative flex-1">
+            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Filter headlines..."
-              className="w-full pl-9 pr-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none"
+              placeholder="Search headlines and keywords..."
+              className="w-full pl-8 pr-7 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
+            {searchQuery && (
+              <button
+                onClick={() => onSearchChange('')}
+                className="absolute right-2 top-2 text-slate-500 hover:text-white"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div className="relative flex sm:hidden items-center shrink-0">
+            <select
+              value={preferences.activeSort || 'newest'}
+              onChange={(e) => onSortChange(e.target.value as any)}
+              className="pl-2 pr-6 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-slate-300 font-medium appearance-none focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            >
+              <option value="newest">Newest</option>
+              <option value="oldest">Oldest</option>
+              <option value="source">By Source</option>
+            </select>
+            <ArrowUpDown className="w-3 h-3 text-slate-400 absolute right-2 pointer-events-none" />
           </div>
         </div>
 

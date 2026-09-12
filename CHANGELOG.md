@@ -2,6 +2,24 @@
 
 All notable changes to the Wiretap project will be documented in this file.
 
+### [2026-09-13] - Feed Thumbnails, Publisher Favicon Fallbacks, Smart Topic Tags & Mobile Toolbar
+- **Files Changed**:
+  - `api/feed.ts` (Modified)
+  - `src/types/wiretap.ts` (Modified)
+  - `src/utils/smartTags.ts` (Created)
+  - `src/components/layout/Shell.tsx` (Modified)
+  - `src/components/feed/Firehose.tsx` (Modified)
+  - `src/App.tsx` (Modified)
+- **Details**:
+  - Added `rawContent` and `rawDescription` custom fields in `api/feed.ts` to capture unstripped `<img>` tags inside `<content>` and `<description>` (resolving missing thumbnails for Index.hr and regional publishers).
+  - Derived high-resolution publisher favicon URLs (`faviconUrl`) in `api/feed.ts` and attached them to normalized articles and feed subscriptions.
+  - Replaced the two-letter monogram fallback (`IN`, `FA`) in `Firehose.tsx` with high-resolution publisher favicon badges and brand containers across Cards and Compact modes.
+  - Built `src/utils/smartTags.ts` topic classifier matching headlines and snippets against curated domain keywords (`AI`, `Space`, `Sports`, `Politics`, `Cybersecurity`, `Tech & Gadgets`, `Economy & Biz`, `Science`, `Entertainment`).
+  - Reordered the sidebar in `Shell.tsx` to position Subscribed Feeds above Topic Tags, and made each subscribed feed clickable to isolate news from that specific publisher.
+  - Rebranded the main header from "Firehose" to "WIRETAP" with a designated logo slot and dynamic breadcrumb paths (`WIRETAP / Publication`, `WIRETAP / Category`, or `WIRETAP / #Tag`).
+  - Added responsive sub-header mobile toolbar in `Shell.tsx` exposing sorting controls (`Newest First`, `Oldest First`, `Group by Source`) and keyword search on mobile devices.
+  - Updated search input placeholder to "Search headlines and keywords..." while retaining regular expression filtering support.
+
 ### [2026-09-12] - Pure Cheerio Article Extraction and Sanitization
 - **Files Changed**:
   - `api/article.ts` (Modified)

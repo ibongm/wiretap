@@ -38,6 +38,8 @@ export interface NormalizedArticle {
   author?: string;
   snippet: string;
   thumbnail?: string;
+  faviconUrl?: string;
+  smartTags?: string[];
 }
 
 export interface BookmarkedArticle {
