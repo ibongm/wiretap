@@ -134,7 +134,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               <span>Upgrade Guest Session</span>
             </div>
             <p className="text-slate-300 leading-relaxed">
-              Link your guest session to Google or Email to save your 16+ feeds, custom tags, and offline bookmarks permanently across all your devices.
+              Link your guest session to Google or Email to save your feeds, custom tags, and offline bookmarks permanently across all your devices.
             </p>
           </div>
         )}

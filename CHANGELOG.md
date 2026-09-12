@@ -2,6 +2,14 @@
 
 All notable changes to the Wiretap project will be documented in this file.
 
+### [2026-09-12] - Remove Regional Feeds from Default Subscriptions
+- **Files Changed**:
+  - `src/data/starterFeeds.json` (Modified)
+  - `src/components/auth/AuthModal.tsx` (Modified)
+- **Details**:
+  - Removed `Index.hr` and `Telegram.hr` regional news sources from the starter feeds manifest, reducing default seeds to 14 global feeds.
+  - Updated AuthModal copy to refer to subscriptions generally.
+
 ### [2026-09-12] - Documentation & GitHub Repository Preparation
 - **Files Changed**:
   - `README.md` (Created)

@@ -110,21 +110,5 @@
     "feedUrl": "https://aeon.co/feed.rss",
     "siteUrl": "https://aeon.co",
     "faviconUrl": "https://aeon.co/favicon.ico"
-  },
-  {
-    "title": "Index.hr",
-    "category": "Regional News",
-    "tags": ["croatia", "regional"],
-    "feedUrl": "https://www.index.hr/rss",
-    "siteUrl": "https://www.index.hr",
-    "faviconUrl": "https://www.index.hr/favicon.ico"
-  },
-  {
-    "title": "Telegram.hr",
-    "category": "Regional News",
-    "tags": ["croatia", "longform"],
-    "feedUrl": "https://www.telegram.hr/feed/",
-    "siteUrl": "https://www.telegram.hr",
-    "faviconUrl": "https://www.telegram.hr/favicon.ico"
   }
 ]
