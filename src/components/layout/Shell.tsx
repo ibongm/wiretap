@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Bookmark,
   Sliders,
@@ -17,7 +17,9 @@ import {
   Folder,
   User,
   Sparkles,
-  ArrowUpDown
+  ArrowUpDown,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { SubscribedFeed, UserPreferences } from '@/types/wiretap';
 import { useAuth } from '@/context/AuthContext';
@@ -39,6 +41,7 @@ interface ShellProps {
   onDensityChange: (density: 'cards' | 'compact' | 'minimal') => void;
   onSortChange: (sort: 'newest' | 'oldest' | 'source') => void;
   onMarkCategoryRead: (category: string) => void;
+  onToggleHideRead?: () => void;
   onDeleteFeed: (feedId: string) => void;
   onOpenAddFeed: () => void;
   onOpenSettings: () => void;
@@ -62,6 +65,7 @@ export const Shell: React.FC<ShellProps> = ({
   onDensityChange,
   onSortChange,
   onMarkCategoryRead,
+  onToggleHideRead,
   onDeleteFeed,
   onOpenAddFeed,
   onOpenSettings,
@@ -72,6 +76,22 @@ export const Shell: React.FC<ShellProps> = ({
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [editingFeeds, setEditingFeeds] = useState<boolean>(false);
+  const [localSearch, setLocalSearch] = useState<string>(searchQuery);
+
+  // Synchronize local search with external changes
+  useEffect(() => {
+    setLocalSearch(searchQuery);
+  }, [searchQuery]);
+
+  // Debounce search input by 150ms
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (localSearch !== searchQuery) {
+        onSearchChange(localSearch);
+      }
+    }, 150);
+    return () => clearTimeout(handler);
+  }, [localSearch, searchQuery, onSearchChange]);
 
   // Group feeds by category
   const categories = Array.from(new Set(feeds.map((f) => f.category || 'General'))).sort();
@@ -342,7 +362,10 @@ export const Shell: React.FC<ShellProps> = ({
         {/* Sidebar Footer Actions */}
         <div className="p-3 border-t border-slate-800/80 space-y-2">
           <button
-            onClick={onOpenAddFeed}
+            onClick={() => {
+              setMobileMenuOpen(false);
+              onOpenAddFeed();
+            }}
             className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-md transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -351,7 +374,10 @@ export const Shell: React.FC<ShellProps> = ({
 
           <div className="flex items-center space-x-1">
             <button
-              onClick={onOpenSettings}
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onOpenSettings();
+              }}
               title="Settings & Bullshit Filter"
               className="flex-1 flex items-center justify-center space-x-2 p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors text-xs font-medium"
             >
@@ -360,7 +386,10 @@ export const Shell: React.FC<ShellProps> = ({
             </button>
 
             <button
-              onClick={onOpenAuth}
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onOpenAuth();
+              }}
               title={isAnonymous ? 'Guest Mode (Click to Upgrade)' : 'Account'}
               className="flex items-center justify-center p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors text-xs font-medium relative"
             >
@@ -436,14 +465,17 @@ export const Shell: React.FC<ShellProps> = ({
               <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
               <input
                 type="text"
-                value={searchQuery}
-                onChange={(e) => onSearchChange(e.target.value)}
+                value={localSearch}
+                onChange={(e) => setLocalSearch(e.target.value)}
                 placeholder="Search headlines and keywords..."
                 className="w-full pl-9 pr-3 py-1.5 bg-slate-800/80 border border-slate-700/80 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
-              {searchQuery && (
+              {localSearch && (
                 <button
-                  onClick={() => onSearchChange('')}
+                  onClick={() => {
+                    setLocalSearch('');
+                    onSearchChange('');
+                  }}
                   className="absolute right-2.5 top-2 text-slate-500 hover:text-white"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -463,6 +495,22 @@ export const Shell: React.FC<ShellProps> = ({
               >
                 <CheckCheck className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Mark Read</span>
+              </button>
+            )}
+
+            {/* Hide Read Toggle (Desktop) */}
+            {onToggleHideRead && activeView === 'firehose' && (
+              <button
+                onClick={onToggleHideRead}
+                title={preferences.hideRead ? 'Showing unread only (click to show all)' : 'Showing all articles (click to hide read)'}
+                className={`hidden sm:flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-colors ${
+                  preferences.hideRead
+                    ? 'bg-indigo-600/20 text-indigo-400 border-indigo-500/40'
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-400 border-slate-700 hover:text-white'
+                }`}
+              >
+                {preferences.hideRead ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                <span className="hidden lg:inline">{preferences.hideRead ? 'Unread Only' : 'Hide Read'}</span>
               </button>
             )}
 
@@ -525,20 +573,38 @@ export const Shell: React.FC<ShellProps> = ({
             <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2" />
             <input
               type="text"
-              value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
               placeholder="Search headlines and keywords..."
               className="w-full pl-8 pr-7 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
-            {searchQuery && (
+            {localSearch && (
               <button
-                onClick={() => onSearchChange('')}
+                onClick={() => {
+                  setLocalSearch('');
+                  onSearchChange('');
+                }}
                 className="absolute right-2 top-2 text-slate-500 hover:text-white"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
+
+          {/* Mobile Hide Read Toggle */}
+          {onToggleHideRead && activeView === 'firehose' && (
+            <button
+              onClick={onToggleHideRead}
+              title={preferences.hideRead ? 'Showing unread only' : 'Showing all articles'}
+              className={`p-1.5 rounded-xl border text-xs font-semibold shrink-0 transition-colors ${
+                preferences.hideRead
+                  ? 'bg-indigo-600/20 text-indigo-400 border-indigo-500/40'
+                  : 'bg-slate-800 text-slate-400 border-slate-700'
+              }`}
+            >
+              {preferences.hideRead ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          )}
 
           <div className="relative flex sm:hidden items-center shrink-0">
             <select

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { SubscribedFeed, NormalizedArticle, UserPreferences } from '@/types/wiretap';
 import { formatDistanceToNow } from 'date-fns';
@@ -10,11 +10,17 @@ import {
   Sparkles,
   AlertCircle,
   Loader2,
-  ChevronDown
+  ChevronDown,
+  CheckCircle2
 } from 'lucide-react';
-import { isArticleBookmarked, saveOfflineBookmark, removeOfflineBookmark } from '@/services/offlineStorage';
+import {
+  saveOfflineBookmark,
+  removeOfflineBookmark,
+  getAllBookmarkIds
+} from '@/services/offlineStorage';
 import { useAuth } from '@/context/AuthContext';
 import { getSmartTagsForArticle } from '@/utils/smartTags';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 
 interface FirehoseProps {
   feeds: SubscribedFeed[];
@@ -29,6 +35,8 @@ interface FirehoseProps {
   onBookmarkChanged?: () => void;
   onSelectFeed?: (feedId: string | null) => void;
   onSelectTag?: (tag: string | null) => void;
+  onToggleRead?: (articleId: string) => void;
+  isModalOpen?: boolean;
 }
 
 const ITEMS_PER_PAGE = 25;
@@ -45,11 +53,14 @@ export const Firehose: React.FC<FirehoseProps> = ({
   onOpenArticle,
   onBookmarkChanged,
   onSelectFeed,
-  onSelectTag
+  onSelectTag,
+  onToggleRead,
+  isModalOpen = false
 }) => {
   const { userProfile } = useAuth();
   const [displayCount, setDisplayCount] = useState<number>(ITEMS_PER_PAGE);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
+  const articleRefs = useRef<(HTMLElement | null)[]>([]);
 
   // Filter feeds based on active Source, Category, or Feed-level Tag
   const activeFeeds = useMemo(() => {
@@ -132,17 +143,21 @@ export const Firehose: React.FC<FirehoseProps> = ({
       });
     }
 
-    // 3. Apply Bullshit Filter (Muted Keywords Regex)
-    const mutedPatterns = (preferences.mutedKeywords || [])
-      .map((kw) => kw.trim())
-      .filter(Boolean)
-      .map((kw) => new RegExp(`\\b${escapeRegExp(kw)}\\b`, 'i'));
-
-    filtered = filtered.filter((item) => {
-      if (mutedPatterns.length === 0) return true;
-      const targetText = `${item.title} ${item.snippet}`;
-      return !mutedPatterns.some((pattern) => pattern.test(targetText));
-    });
+    // 3. Apply Bullshit Filter (Muted Keywords or Regex)
+    const mutedTerms = (preferences.mutedKeywords || []).map((kw) => kw.trim()).filter(Boolean);
+    if (mutedTerms.length > 0) {
+      filtered = filtered.filter((item) => {
+        const targetText = `${item.title} ${item.snippet}`;
+        return !mutedTerms.some((kw) => {
+          try {
+            const reg = new RegExp(`\\b${kw}\\b`, 'i');
+            return reg.test(targetText);
+          } catch {
+            return targetText.toLowerCase().includes(kw.toLowerCase());
+          }
+        });
+      });
+    }
 
     // 4. Apply Real-Time Search Query (Regex or Substring)
     if (searchQuery.trim()) {
@@ -162,7 +177,17 @@ export const Firehose: React.FC<FirehoseProps> = ({
       }
     }
 
-    // 4. Sort Mode
+    // 5. Hide Read Articles Filter
+    const readSet = new Set(preferences.readArticleIds || []);
+    const cutoffTimestamp = selectedCategory ? (preferences.readCutoffs || {})[selectedCategory] || 0 : 0;
+    if (preferences.hideRead) {
+      filtered = filtered.filter((item) => {
+        const isRead = (cutoffTimestamp > 0 && item.pubDate <= cutoffTimestamp) || readSet.has(item.id);
+        return !isRead;
+      });
+    }
+
+    // 6. Sort Mode
     const sortMode = preferences.activeSort || 'newest';
     if (sortMode === 'newest') {
       filtered.sort((a, b) => b.pubDate - a.pubDate);
@@ -177,25 +202,59 @@ export const Firehose: React.FC<FirehoseProps> = ({
     }
 
     return filtered;
-  }, [queryResults, preferences.mutedKeywords, preferences.activeSort, searchQuery, selectedTag, feeds]);
+  }, [queryResults, preferences.mutedKeywords, preferences.activeSort, preferences.readArticleIds, preferences.hideRead, preferences.readCutoffs, searchQuery, selectedTag, selectedCategory, feeds]);
 
-  // Initial check of bookmarks for visible articles
-  React.useEffect(() => {
+  // Batch check of bookmarks via single IndexedDB call (O(1) lookups)
+  useEffect(() => {
     let isMounted = true;
-    const checkBookmarks = async () => {
-      const ids = new Set<string>();
-      for (const item of processedArticles.slice(0, displayCount)) {
-        if (await isArticleBookmarked(item.id)) {
-          ids.add(item.id);
-        }
-      }
+    getAllBookmarkIds().then((ids) => {
       if (isMounted) setBookmarkedIds(ids);
-    };
-    checkBookmarks();
+    });
     return () => {
       isMounted = false;
     };
-  }, [processedArticles, displayCount]);
+  }, [displayCount]);
+
+  // Auto-scroll selected article into view on keyboard navigation
+  useEffect(() => {
+    const el = articleRefs.current[selectedIndex];
+    if (el) {
+      el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [selectedIndex]);
+
+  // Active keyboard shortcuts hooked directly to live processed articles
+  useKeyboardShortcuts({
+    articles: processedArticles,
+    selectedIndex,
+    setSelectedIndex: (action) => {
+      if (typeof action === 'function') {
+        onSelectArticle(action(selectedIndex));
+      } else {
+        onSelectArticle(action);
+      }
+    },
+    onOpenArticle,
+    onToggleBookmark: async (art) => {
+      const isBookmarked = bookmarkedIds.has(art.id);
+      if (isBookmarked) {
+        await removeOfflineBookmark(art.id, userProfile?.uid);
+        setBookmarkedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(art.id);
+          return next;
+        });
+      } else {
+        await saveOfflineBookmark(art, art.contentHtml || '', null, 2, userProfile?.uid);
+        setBookmarkedIds((prev) => new Set(prev).add(art.id));
+      }
+      if (onBookmarkChanged) onBookmarkChanged();
+    },
+    onToggleRead: (art) => {
+      if (onToggleRead) onToggleRead(art.id);
+    },
+    isModalOpen
+  });
 
   const toggleBookmark = async (article: NormalizedArticle, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -208,7 +267,7 @@ export const Firehose: React.FC<FirehoseProps> = ({
         return next;
       });
     } else {
-      await saveOfflineBookmark(article, '', null, 2, userProfile?.uid);
+      await saveOfflineBookmark(article, article.contentHtml || '', null, 2, userProfile?.uid);
       setBookmarkedIds((prev) => new Set(prev).add(article.id));
     }
     if (onBookmarkChanged) onBookmarkChanged();
@@ -269,12 +328,17 @@ export const Firehose: React.FC<FirehoseProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {visibleArticles.map((article, idx) => {
             const isSelected = selectedIndex === idx;
-            const isRead = cutoffTimestamp > 0 && article.pubDate <= cutoffTimestamp;
+            const isRead =
+              (cutoffTimestamp > 0 && article.pubDate <= cutoffTimestamp) ||
+              (preferences.readArticleIds || []).includes(article.id);
             const isBookmarked = bookmarkedIds.has(article.id);
 
             return (
               <article
                 key={article.id}
+                ref={(el) => {
+                  articleRefs.current[idx] = el;
+                }}
                 onClick={() => {
                   onSelectArticle(idx);
                   onOpenArticle(article);
@@ -408,6 +472,23 @@ export const Firehose: React.FC<FirehoseProps> = ({
                     </span>
 
                     <div className="flex items-center space-x-1">
+                      {onToggleRead && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleRead(article.id);
+                          }}
+                          title={isRead ? 'Mark as unread (m)' : 'Mark as read (m)'}
+                          className={`p-1.5 rounded-lg transition-colors ${
+                            isRead
+                              ? 'text-emerald-400 hover:bg-emerald-500/10'
+                              : 'text-slate-500 hover:text-white hover:bg-slate-800'
+                          }`}
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                        </button>
+                      )}
+
                       <button
                         onClick={(e) => toggleBookmark(article, e)}
                         title={isBookmarked ? 'Remove bookmark' : 'Bookmark for offline'}
@@ -444,12 +525,17 @@ export const Firehose: React.FC<FirehoseProps> = ({
         <div className="divide-y divide-slate-800/80 bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
           {visibleArticles.map((article, idx) => {
             const isSelected = selectedIndex === idx;
-            const isRead = cutoffTimestamp > 0 && article.pubDate <= cutoffTimestamp;
+            const isRead =
+              (cutoffTimestamp > 0 && article.pubDate <= cutoffTimestamp) ||
+              (preferences.readArticleIds || []).includes(article.id);
             const isBookmarked = bookmarkedIds.has(article.id);
 
             return (
               <div
                 key={article.id}
+                ref={(el) => {
+                  articleRefs.current[idx] = el;
+                }}
                 onClick={() => {
                   onSelectArticle(idx);
                   onOpenArticle(article);
@@ -533,6 +619,22 @@ export const Firehose: React.FC<FirehoseProps> = ({
                 </div>
 
                 <div className="flex items-center space-x-1 shrink-0">
+                  {onToggleRead && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleRead(article.id);
+                      }}
+                      title={isRead ? 'Mark as unread (m)' : 'Mark as read (m)'}
+                      className={`p-1.5 rounded-lg transition-colors ${
+                        isRead
+                          ? 'text-emerald-400 hover:bg-emerald-500/10'
+                          : 'text-slate-500 hover:text-white hover:bg-slate-800'
+                      }`}
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                    </button>
+                  )}
                   <button
                     onClick={(e) => toggleBookmark(article, e)}
                     className={`p-1.5 rounded-lg transition-colors ${
@@ -564,12 +666,17 @@ export const Firehose: React.FC<FirehoseProps> = ({
         <div className="divide-y divide-slate-800/80 bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
           {visibleArticles.map((article, idx) => {
             const isSelected = selectedIndex === idx;
-            const isRead = cutoffTimestamp > 0 && article.pubDate <= cutoffTimestamp;
+            const isRead =
+              (cutoffTimestamp > 0 && article.pubDate <= cutoffTimestamp) ||
+              (preferences.readArticleIds || []).includes(article.id);
             const isBookmarked = bookmarkedIds.has(article.id);
 
             return (
               <div
                 key={article.id}
+                ref={(el) => {
+                  articleRefs.current[idx] = el;
+                }}
                 onClick={() => {
                   onSelectArticle(idx);
                   onOpenArticle(article);
@@ -600,10 +707,26 @@ export const Firehose: React.FC<FirehoseProps> = ({
                   </h4>
                 </div>
 
-                <div className="flex items-center space-x-3 shrink-0 text-xs">
+                <div className="flex items-center space-x-2 shrink-0 text-xs">
                   <span className="text-[11px] text-slate-500">
                     {formatDistanceToNow(new Date(article.pubDate), { addSuffix: true })}
                   </span>
+                  {onToggleRead && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleRead(article.id);
+                      }}
+                      title={isRead ? 'Mark as unread (m)' : 'Mark as read (m)'}
+                      className={`p-1 rounded transition-colors ${
+                        isRead
+                          ? 'text-emerald-400 hover:bg-emerald-500/10'
+                          : 'text-slate-600 hover:text-white'
+                      }`}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                   <button
                     onClick={(e) => toggleBookmark(article, e)}
                     className={`p-1 rounded transition-colors ${

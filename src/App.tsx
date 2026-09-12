@@ -33,7 +33,10 @@ function WiretapApp() {
     removeFeed,
     batchAddFeeds,
     updatePreferences,
-    markCategoryAsRead
+    markCategoryAsRead,
+    markArticleAsRead,
+    toggleArticleRead,
+    toggleHideRead
   } = useUserFeeds();
 
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -67,22 +70,6 @@ function WiretapApp() {
 
   // Keyboard shortcut actions
   const isAnyModalOpen = isAddFeedOpen || isSettingsOpen || isAuthOpen || isReaderOpen;
-
-  useKeyboardShortcuts({
-    articles: [], // Will be handled inside firehose or general navigation
-    selectedIndex,
-    setSelectedIndex,
-    onOpenArticle: (art) => handleOpenArticle(art),
-    onToggleBookmark: async (art) => {
-      const exists = await isArticleBookmarked(art.id);
-      if (exists) {
-        await removeOfflineBookmark(art.id);
-      } else {
-        await saveOfflineBookmark(art);
-      }
-    },
-    isModalOpen: isAnyModalOpen
-  });
 
   return (
     <ThemeProvider
@@ -123,6 +110,7 @@ function WiretapApp() {
         onDensityChange={(density) => updatePreferences({ density })}
         onSortChange={(activeSort) => updatePreferences({ activeSort })}
         onMarkCategoryRead={(cat) => markCategoryAsRead(cat)}
+        onToggleHideRead={toggleHideRead}
         onDeleteFeed={removeFeed}
         onOpenAddFeed={() => setIsAddFeedOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
@@ -139,6 +127,8 @@ function WiretapApp() {
             selectedIndex={selectedIndex}
             onSelectArticle={setSelectedIndex}
             onOpenArticle={handleOpenArticle}
+            onToggleRead={toggleArticleRead}
+            isModalOpen={isAnyModalOpen}
             onSelectFeed={(feedId) => {
               setSelectedFeedId(feedId);
               setSelectedCategory(null);
@@ -161,6 +151,12 @@ function WiretapApp() {
           article={readerArticle}
           isOpen={isReaderOpen}
           onClose={() => setIsReaderOpen(false)}
+          initialFontFamily={preferences.readerFont || 'serif'}
+          initialFontSize={preferences.readerFontSize || 18}
+          onUpdateTypography={(readerFont, readerFontSize) =>
+            updatePreferences({ readerFont, readerFontSize })
+          }
+          onArticleRead={(artId) => markArticleAsRead(artId)}
         />
 
         {/* Add Feed Modal */}

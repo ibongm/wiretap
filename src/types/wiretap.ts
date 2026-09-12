@@ -12,6 +12,8 @@ export interface UserPreferences {
   readerFontSize: number; // default 18 (px)
   mutedKeywords: string[]; // Bullshit filter
   readCutoffs: Record<string, number>; // { [categoryIdOrFeedId]: unixTimestamp }
+  readArticleIds?: string[]; // Per-article read tracking
+  hideRead?: boolean; // Filter out read articles
   activeSort: 'newest' | 'oldest' | 'source';
 }
 
@@ -37,6 +39,7 @@ export interface NormalizedArticle {
   pubDate: number; // Unix timestamp in ms or seconds
   author?: string;
   snippet: string;
+  contentHtml?: string; // Full rich HTML content if present in feed
   thumbnail?: string;
   faviconUrl?: string;
   smartTags?: string[];

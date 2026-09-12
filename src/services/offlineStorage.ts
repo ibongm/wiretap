@@ -1,7 +1,7 @@
 import { get, set, del, values } from 'idb-keyval';
 import { BookmarkedArticle, NormalizedArticle } from '@/types/wiretap';
 import { db, isFirebaseConfigured } from '@/services/firebase';
-import { doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc, collection, getDocs } from 'firebase/firestore';
 
 const IDB_BOOKMARKS_PREFIX = 'wiretap_bookmark_';
 
@@ -12,6 +12,8 @@ export async function saveOfflineBookmark(
   readingTimeMinutes: number = 2,
   userId?: string
 ): Promise<BookmarkedArticle> {
+  const content = extractedHtml || article.contentHtml || (article.snippet ? `<p>${article.snippet}</p>` : '');
+
   const bookmark: BookmarkedArticle = {
     id: article.id,
     title: article.title,
@@ -21,7 +23,7 @@ export async function saveOfflineBookmark(
     publishedAt: article.pubDate,
     snippet: article.snippet,
     leadImageUrl: leadImageUrl || article.thumbnail || null,
-    extractedHtml,
+    extractedHtml: content,
     readingTimeMinutes,
     savedAt: Date.now()
   };
@@ -37,6 +39,27 @@ export async function saveOfflineBookmark(
     } catch (e) {
       console.warn('Could not sync bookmark to Firestore (offline?):', e);
     }
+  }
+
+  // 3. If full HTML wasn't already available and we have network, background-extract it
+  if (!extractedHtml && !article.contentHtml && typeof window !== 'undefined' && navigator.onLine && article.link) {
+    fetch(`/api/article?url=${encodeURIComponent(article.link)}`)
+      .then((res) => res.json())
+      .then(async (data) => {
+        if (data.ok && data.article?.content) {
+          bookmark.extractedHtml = data.article.content;
+          if (data.article.leadImageUrl) bookmark.leadImageUrl = data.article.leadImageUrl;
+          if (data.article.readingTimeMinutes) bookmark.readingTimeMinutes = data.article.readingTimeMinutes;
+          await set(`${IDB_BOOKMARKS_PREFIX}${bookmark.id}`, bookmark);
+          if (userId && isFirebaseConfigured && db) {
+            const bookmarkRef = doc(db, 'users', userId, 'bookmarks', bookmark.id);
+            await setDoc(bookmarkRef, bookmark);
+          }
+        }
+      })
+      .catch(() => {
+        // Fallback content already saved
+      });
   }
 
   return bookmark;
@@ -69,11 +92,44 @@ export async function getAllOfflineBookmarks(): Promise<BookmarkedArticle[]> {
   }
 }
 
+export async function getAllBookmarkIds(): Promise<Set<string>> {
+  try {
+    const all = await getAllOfflineBookmarks();
+    return new Set(all.map((b) => b.id));
+  } catch {
+    return new Set();
+  }
+}
+
 export async function isArticleBookmarked(bookmarkId: string): Promise<boolean> {
   try {
     const item = await get(`${IDB_BOOKMARKS_PREFIX}${bookmarkId}`);
     return Boolean(item);
   } catch {
     return false;
+  }
+}
+
+export async function syncCloudBookmarks(userId: string): Promise<BookmarkedArticle[]> {
+  if (!userId || !isFirebaseConfigured || !db) {
+    return getAllOfflineBookmarks();
+  }
+
+  try {
+    const colRef = collection(db, 'users', userId, 'bookmarks');
+    const snap = await getDocs(colRef);
+    const cloudBookmarks: BookmarkedArticle[] = [];
+    snap.forEach((d) => {
+      cloudBookmarks.push(d.data() as BookmarkedArticle);
+    });
+
+    for (const b of cloudBookmarks) {
+      await set(`${IDB_BOOKMARKS_PREFIX}${b.id}`, b);
+    }
+
+    return getAllOfflineBookmarks();
+  } catch (err) {
+    console.warn('Failed to sync cloud bookmarks:', err);
+    return getAllOfflineBookmarks();
   }
 }

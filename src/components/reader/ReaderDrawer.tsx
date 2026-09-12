@@ -12,7 +12,9 @@ import {
   Minus,
   Plus,
   Loader2,
-  Check
+  Check,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 import { NormalizedArticle, BookmarkedArticle, ExtractedArticleData } from '@/types/wiretap';
 import {
@@ -21,6 +23,7 @@ import {
   isArticleBookmarked
 } from '@/services/offlineStorage';
 import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
 import { format } from 'date-fns';
 
 interface ReaderDrawerProps {
@@ -28,25 +31,68 @@ interface ReaderDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   onBookmarkChanged?: () => void;
+  onArticleRead?: (articleId: string) => void;
+  initialFontFamily?: 'sans' | 'serif';
+  initialFontSize?: number;
+  onUpdateTypography?: (font: 'sans' | 'serif', size: number) => void;
 }
 
 export const ReaderDrawer: React.FC<ReaderDrawerProps> = ({
   article,
   isOpen,
   onClose,
-  onBookmarkChanged
+  onBookmarkChanged,
+  onArticleRead,
+  initialFontFamily = 'serif',
+  initialFontSize = 18,
+  onUpdateTypography
 }) => {
   const { userProfile } = useAuth();
+  const { theme } = useTheme();
+  const isDark = theme === 'oled' || theme === 'slate';
+
   const [extracted, setExtracted] = useState<ExtractedArticleData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isBookmarked, setIsBookmarked] = useState<boolean>(false);
-  const [fontFamily, setFontFamily] = useState<'sans' | 'serif'>('serif');
-  const [fontSize, setFontSize] = useState<number>(18);
+  const [fontFamily, setFontFamily] = useState<'sans' | 'serif'>(initialFontFamily);
+  const [fontSize, setFontSize] = useState<number>(initialFontSize);
   const [scrollProgress, setScrollProgress] = useState<number>(0);
   const [copied, setCopied] = useState<boolean>(false);
+  const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
 
   const contentContainerRef = useRef<HTMLDivElement>(null);
+
+  // Sync typography with parent preferences when initial props change
+  useEffect(() => {
+    if (initialFontFamily) setFontFamily(initialFontFamily);
+  }, [initialFontFamily]);
+
+  useEffect(() => {
+    if (initialFontSize) setFontSize(initialFontSize);
+  }, [initialFontSize]);
+
+  // Lock background scrolling when drawer is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      if (article && onArticleRead) {
+        onArticleRead(article.id);
+      }
+    } else {
+      document.body.style.overflow = '';
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      setIsSpeaking(false);
+    }
+    return () => {
+      document.body.style.overflow = '';
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, [isOpen, article?.id]);
 
   // Derive active hero lead image URL
   const heroImageUrl =
@@ -130,6 +176,25 @@ export const ReaderDrawer: React.FC<ReaderDrawerProps> = ({
       return;
     }
 
+    // If article already has rich contentHtml from RSS feed, use it
+    if ('contentHtml' in article && article.contentHtml) {
+      setExtracted({
+        title: article.title,
+        author: article.author || null,
+        content: article.contentHtml,
+        leadImageUrl: article.thumbnail || null,
+        publishedAt: article.pubDate,
+        readingTimeMinutes: Math.max(
+          1,
+          Math.ceil(article.contentHtml.replace(/<[^>]*>/g, ' ').trim().split(/\s+/).filter(Boolean).length / 200)
+        ),
+        sourceTitle: article.sourceTitle,
+        url: article.link
+      });
+      setLoading(false);
+      return;
+    }
+
     // Otherwise, fetch via /api/article
     const articleUrl = 'link' in article ? article.link : (article as BookmarkedArticle).originalUrl;
     if (!articleUrl) return;
@@ -181,6 +246,35 @@ export const ReaderDrawer: React.FC<ReaderDrawerProps> = ({
     setScrollProgress(Math.min(100, Math.max(0, progress)));
   };
 
+  const handleFontFamilyChange = (font: 'sans' | 'serif') => {
+    setFontFamily(font);
+    if (onUpdateTypography) onUpdateTypography(font, fontSize);
+  };
+
+  const handleFontSizeChange = (delta: number) => {
+    const nextSize = Math.min(26, Math.max(14, fontSize + delta));
+    setFontSize(nextSize);
+    if (onUpdateTypography) onUpdateTypography(fontFamily, nextSize);
+  };
+
+  const toggleSpeech = () => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    } else {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(displayContent || article?.snippet || '', 'text/html');
+      const text = `${article?.title || ''}. ${doc.body.textContent || ''}`.trim();
+      if (!text) return;
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+      window.speechSynthesis.speak(utterance);
+      setIsSpeaking(true);
+    }
+  };
+
   const handleToggleBookmark = async () => {
     if (!article) return;
     const articleLink = 'link' in article ? article.link : (article as BookmarkedArticle).originalUrl;
@@ -192,7 +286,8 @@ export const ReaderDrawer: React.FC<ReaderDrawerProps> = ({
       sourceTitle: article.sourceTitle,
       snippet: article.snippet,
       author: article.author || undefined,
-      thumbnail: 'thumbnail' in article ? article.thumbnail : ((article as BookmarkedArticle).leadImageUrl || undefined)
+      thumbnail: 'thumbnail' in article ? article.thumbnail : ((article as BookmarkedArticle).leadImageUrl || undefined),
+      contentHtml: extracted?.content || ('contentHtml' in article ? article.contentHtml : undefined)
     };
 
     if (isBookmarked) {
@@ -211,9 +306,22 @@ export const ReaderDrawer: React.FC<ReaderDrawerProps> = ({
     if (onBookmarkChanged) onBookmarkChanged();
   };
 
-  const handleShare = () => {
-    const url = article ? ('link' in article ? article.link : (article as BookmarkedArticle).originalUrl) : '';
+  const handleShare = async () => {
+    if (!article) return;
+    const url = 'link' in article ? article.link : (article as BookmarkedArticle).originalUrl;
     if (!url) return;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: article.title,
+          url
+        });
+        return;
+      } catch {
+        // Fallback to clipboard
+      }
+    }
 
     if (navigator.clipboard) {
       navigator.clipboard.writeText(url);
@@ -262,10 +370,23 @@ export const ReaderDrawer: React.FC<ReaderDrawerProps> = ({
           </div>
 
           <div className="flex items-center space-x-1 sm:space-x-2">
+            {/* Audio Speech Narration */}
+            {typeof window !== 'undefined' && 'speechSynthesis' in window && (
+              <button
+                onClick={toggleSpeech}
+                title={isSpeaking ? 'Stop narration' : 'Listen to article'}
+                className={`p-2 rounded-lg transition-colors ${
+                  isSpeaking ? 'bg-indigo-600 text-white animate-pulse' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+              >
+                {isSpeaking ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              </button>
+            )}
+
             {/* Font switcher */}
             <div className="flex items-center bg-slate-800 rounded-lg p-0.5 border border-slate-700/60">
               <button
-                onClick={() => setFontFamily('sans')}
+                onClick={() => handleFontFamilyChange('sans')}
                 className={`px-2 py-1 text-xs font-sans rounded-md transition-colors ${
                   fontFamily === 'sans' ? 'bg-indigo-600 text-white font-semibold' : 'text-slate-400 hover:text-white'
                 }`}
@@ -273,7 +394,7 @@ export const ReaderDrawer: React.FC<ReaderDrawerProps> = ({
                 Sans
               </button>
               <button
-                onClick={() => setFontFamily('serif')}
+                onClick={() => handleFontFamilyChange('serif')}
                 className={`px-2 py-1 text-xs font-serif rounded-md transition-colors ${
                   fontFamily === 'serif' ? 'bg-indigo-600 text-white font-semibold' : 'text-slate-400 hover:text-white'
                 }`}
@@ -285,7 +406,7 @@ export const ReaderDrawer: React.FC<ReaderDrawerProps> = ({
             {/* Font size steppers */}
             <div className="flex items-center bg-slate-800 rounded-lg p-0.5 border border-slate-700/60">
               <button
-                onClick={() => setFontSize((s) => Math.max(14, s - 1))}
+                onClick={() => handleFontSizeChange(-1)}
                 title="Decrease font size"
                 className="p-1 text-slate-400 hover:text-white rounded transition-colors"
               >
@@ -293,7 +414,7 @@ export const ReaderDrawer: React.FC<ReaderDrawerProps> = ({
               </button>
               <span className="text-xs text-slate-300 px-1 font-mono">{fontSize}</span>
               <button
-                onClick={() => setFontSize((s) => Math.min(26, s + 1))}
+                onClick={() => handleFontSizeChange(1)}
                 title="Increase font size"
                 className="p-1 text-slate-400 hover:text-white rounded transition-colors"
               >
@@ -317,7 +438,7 @@ export const ReaderDrawer: React.FC<ReaderDrawerProps> = ({
             {/* Share button */}
             <button
               onClick={handleShare}
-              title="Copy link to clipboard"
+              title="Share article or copy link"
               className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors relative"
             >
               {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4" />}
@@ -420,9 +541,11 @@ export const ReaderDrawer: React.FC<ReaderDrawerProps> = ({
           {/* Render Extracted Article Content */}
           {displayContent ? (
             <div
-              className={`prose prose-invert max-w-none transition-all ${
+              className={`prose ${
+                isDark ? 'prose-invert prose-p:text-slate-200' : 'prose-stone prose-p:text-stone-800'
+              } max-w-none transition-all ${
                 fontFamily === 'serif' ? 'font-serif' : 'font-sans'
-              } prose-p:leading-relaxed prose-p:text-slate-200 prose-headings:text-white prose-a:text-indigo-400 prose-img:rounded-xl prose-img:border prose-img:border-slate-800`}
+              } prose-p:leading-relaxed prose-headings:text-inherit prose-a:text-indigo-500 prose-img:rounded-xl prose-img:border prose-img:border-slate-800`}
               style={{ fontSize: `${fontSize}px` }}
               dangerouslySetInnerHTML={{ __html: displayContent }}
             />

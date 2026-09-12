@@ -76,14 +76,29 @@ export const OpmlManager: React.FC<OpmlManagerProps> = ({ feeds, onBatchAddFeeds
       const existingUrls = new Set(feeds.map((f) => f.feedUrl.toLowerCase().trim()));
       const uniqueNewFeeds = data.feeds
         .filter((f: any) => !existingUrls.has(f.feedUrl.toLowerCase().trim()))
-        .map((f: any) => ({
-          title: f.title || 'Untitled Feed',
-          feedUrl: f.feedUrl,
-          siteUrl: f.siteUrl || '',
-          category: f.category || 'Imported',
-          tags: ['imported'],
-          faviconUrl: f.siteUrl ? `${new URL(f.siteUrl).origin}/favicon.ico` : ''
-        }));
+        .map((f: any) => {
+          let faviconUrl = '';
+          try {
+            if (f.siteUrl) {
+              const parsed = new URL(f.siteUrl.startsWith('http') ? f.siteUrl : `https://${f.siteUrl}`);
+              faviconUrl = `https://www.google.com/s2/favicons?domain=${parsed.hostname}&sz=128`;
+            } else if (f.feedUrl) {
+              const parsed = new URL(f.feedUrl);
+              faviconUrl = `https://www.google.com/s2/favicons?domain=${parsed.hostname}&sz=128`;
+            }
+          } catch {
+            faviconUrl = '';
+          }
+
+          return {
+            title: f.title || 'Untitled Feed',
+            feedUrl: f.feedUrl,
+            siteUrl: f.siteUrl || '',
+            category: f.category || 'Imported',
+            tags: ['imported'],
+            faviconUrl
+          };
+        });
 
       if (uniqueNewFeeds.length === 0) {
         setStatusMessage('All feeds in OPML file already exist in your subscriptions.');

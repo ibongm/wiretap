@@ -24,7 +24,7 @@ Wiretap combines the syndication power of RSS, Atom, and JSON feeds with a two-t
 
 - **Frontend:** React 18 (TypeScript), Vite, Tailwind CSS, `@tailwindcss/typography`, Lucide React
 - **State & Data:** TanStack Query (`@tanstack/react-query`), IndexedDB (`idb-keyval`)
-- **Backend / Edge:** Vercel Serverless Functions (`/api`), Node.js, `rss-parser`, `@extractus/article-extractor`, `sanitize-html`, `cheerio`
+- **Backend / Edge:** Vercel Serverless Functions (`/api`), Node.js, `rss-parser`, `cheerio`
 - **Identity & Persistence:** Firebase Auth (Anonymous, Google OAuth, Email/Password), Cloud Firestore
 - **PWA:** `vite-plugin-pwa` with service worker caching
 

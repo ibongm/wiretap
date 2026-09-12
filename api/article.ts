@@ -41,6 +41,31 @@ function sanitizeWithCheerio($: cheerio.CheerioAPI, rootEl: any): string {
   return $(rootEl).html() || '';
 }
 
+function isSafeUrl(urlString: string): boolean {
+  try {
+    const parsed = new URL(urlString);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+    const hostname = parsed.hostname.toLowerCase();
+    if (
+      hostname === 'localhost' ||
+      hostname.endsWith('.localhost') ||
+      hostname === '127.0.0.1' ||
+      hostname === '::1' ||
+      hostname === '0.0.0.0' ||
+      hostname === '169.254.169.254' ||
+      hostname === 'metadata.google.internal' ||
+      hostname.startsWith('10.') ||
+      hostname.startsWith('192.168.') ||
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname)
+    ) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function calculateReadingTime(text: string): number {
   const words = text.trim().split(/\s+/).filter(Boolean).length;
   return Math.max(1, Math.ceil(words / 200));
@@ -76,6 +101,9 @@ export default async function handler(req: any, res: any) {
 
   try {
     const cleanUrl = decodeURIComponent(targetUrl.trim());
+    if (!isSafeUrl(cleanUrl)) {
+      return res.status(200).json({ ok: false, error: 'Invalid or forbidden article URL.' });
+    }
 
     // Fetch article HTML with 7-second abort signal
     const response = await fetch(cleanUrl, {

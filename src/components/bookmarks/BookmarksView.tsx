@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BookmarkedArticle } from '@/types/wiretap';
-import { getAllOfflineBookmarks, removeOfflineBookmark } from '@/services/offlineStorage';
+import { getAllOfflineBookmarks, removeOfflineBookmark, syncCloudBookmarks } from '@/services/offlineStorage';
 import { useAuth } from '@/context/AuthContext';
 import {
   BookmarkCheck,
@@ -25,14 +25,19 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onOpenArticle }) =
 
   const loadBookmarks = async () => {
     setLoading(true);
-    const data = await getAllOfflineBookmarks();
-    setBookmarks(data);
+    if (userProfile?.uid && !userProfile.isAnonymous) {
+      const data = await syncCloudBookmarks(userProfile.uid);
+      setBookmarks(data);
+    } else {
+      const data = await getAllOfflineBookmarks();
+      setBookmarks(data);
+    }
     setLoading(false);
   };
 
   useEffect(() => {
     loadBookmarks();
-  }, []);
+  }, [userProfile?.uid]);
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();

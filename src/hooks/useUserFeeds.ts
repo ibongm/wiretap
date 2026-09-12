@@ -294,6 +294,38 @@ export function useUserFeeds() {
     [preferences.readCutoffs, updatePreferences]
   );
 
+  const markArticleAsRead = useCallback(
+    async (articleId: string) => {
+      const current = new Set(preferences.readArticleIds || []);
+      if (!current.has(articleId)) {
+        current.add(articleId);
+        const list = Array.from(current).slice(-2000);
+        await updatePreferences({ readArticleIds: list });
+      }
+    },
+    [preferences.readArticleIds, updatePreferences]
+  );
+
+  const toggleArticleRead = useCallback(
+    async (articleId: string) => {
+      const current = new Set(preferences.readArticleIds || []);
+      if (current.has(articleId)) {
+        current.delete(articleId);
+      } else {
+        current.add(articleId);
+      }
+      await updatePreferences({ readArticleIds: Array.from(current).slice(-2000) });
+    },
+    [preferences.readArticleIds, updatePreferences]
+  );
+
+  const toggleHideRead = useCallback(
+    async () => {
+      await updatePreferences({ hideRead: !preferences.hideRead });
+    },
+    [preferences.hideRead, updatePreferences]
+  );
+
   return {
     feeds,
     preferences,
@@ -303,6 +335,9 @@ export function useUserFeeds() {
     updateFeed,
     batchAddFeeds,
     updatePreferences,
-    markCategoryAsRead
+    markCategoryAsRead,
+    markArticleAsRead,
+    toggleArticleRead,
+    toggleHideRead
   };
 }

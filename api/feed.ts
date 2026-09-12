@@ -82,6 +82,31 @@ function hashString(input: string): string {
   return crypto.createHash('sha256').update(input).digest('hex').substring(0, 16);
 }
 
+function isSafeUrl(urlString: string): boolean {
+  try {
+    const parsed = new URL(urlString);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+    const hostname = parsed.hostname.toLowerCase();
+    if (
+      hostname === 'localhost' ||
+      hostname.endsWith('.localhost') ||
+      hostname === '127.0.0.1' ||
+      hostname === '::1' ||
+      hostname === '0.0.0.0' ||
+      hostname === '169.254.169.254' ||
+      hostname === 'metadata.google.internal' ||
+      hostname.startsWith('10.') ||
+      hostname.startsWith('192.168.') ||
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname)
+    ) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export default async function handler(req: any, res: any) {
   // Edge Caching headers
   res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=1200');
@@ -99,6 +124,10 @@ export default async function handler(req: any, res: any) {
 
   try {
     const feedUrl = decodeURIComponent(rawUrl);
+    if (!isSafeUrl(feedUrl)) {
+      return res.status(400).json({ ok: false, error: 'Invalid or forbidden feed URL.' });
+    }
+
     const parsedFeed = await parser.parseURL(feedUrl);
 
     const siteUrl = parsedFeed.link || new URL(feedUrl).origin;
@@ -155,9 +184,11 @@ export default async function handler(req: any, res: any) {
         pubDate = Date.now();
       }
 
-      // Format snippet
-      const rawText = item.contentSnippet || item.summary || item['content:encoded'] || item.content || item.description || '';
+      // Format snippet & retain full rich HTML if provided by feed
+      const rawHtml = item['content:encoded'] || item.rawContent || item.content || item.rawDescription || '';
+      const rawText = item.contentSnippet || item.summary || rawHtml || item.description || '';
       const snippet = stripHtml(rawText).slice(0, 280);
+      const contentHtml = rawHtml && rawHtml.length > 250 ? rawHtml : undefined;
 
       return {
         id,
@@ -167,6 +198,7 @@ export default async function handler(req: any, res: any) {
         pubDate,
         author: item.creator || (item as any).author || undefined,
         snippet,
+        contentHtml,
         thumbnail: thumbnail || undefined,
         faviconUrl
       };

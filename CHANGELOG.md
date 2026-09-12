@@ -2,6 +2,37 @@
 
 All notable changes to the Wiretap project will be documented in this file.
 
+### [2026-09-13] - Comprehensive UX, Offline Storage, SSRF Hardening & Reader Enhancements
+- **Files Changed**:
+  - `api/article.ts` (Modified)
+  - `api/discover.ts` (Modified)
+  - `api/feed.ts` (Modified)
+  - `package.json` (Modified)
+  - `package-lock.json` (Modified)
+  - `README.md` (Modified)
+  - `src/App.tsx` (Modified)
+  - `src/components/bookmarks/BookmarksView.tsx` (Modified)
+  - `src/components/feed/Firehose.tsx` (Modified)
+  - `src/components/layout/Shell.tsx` (Modified)
+  - `src/components/reader/ReaderDrawer.tsx` (Modified)
+  - `src/components/settings/OpmlManager.tsx` (Modified)
+  - `src/hooks/useUserFeeds.ts` (Modified)
+  - `src/index.css` (Modified)
+  - `src/services/offlineStorage.ts` (Modified)
+  - `src/types/wiretap.ts` (Modified)
+- **Details**:
+  - **OPML Import Crash Fix**: Guarded OPML XML parsing with `try...catch` and fallback to Google favicon service in `src/components/settings/OpmlManager.tsx`, eliminating unhandled `Invalid URL` runtime errors on relative or malformed feed links.
+  - **SSRF Protection**: Implemented strict private/loopback IP validation in `api/feed.ts`, `api/article.ts`, and `api/discover.ts` blocking `127.0.0.1`, `localhost`, `169.254.169.254` (cloud metadata), and RFC 1918 private subnets (`10.*`, `192.168.*`, `172.16-31.*`).
+  - **Feed Full-Text Retention**: Extended `api/feed.ts` to capture `<content:encoded>` and full HTML content as `contentHtml` on `NormalizedArticle`, allowing immediate, scraper-free article rendering in `ReaderDrawer.tsx`.
+  - **Theme System Contrast & Visibility**: Fixed pure-white card backgrounds breaking in Warm Editorial, Pure Light, OLED Black, and Slate themes by scoping `.theme-editorial article`, `.theme-light article`, and form controls with appropriate background, border, and text variables in `src/index.css`.
+  - **Dynamic Reader Prose Styling**: Removed hardcoded `prose-invert` in `src/components/reader/ReaderDrawer.tsx` and dynamically bound prose typography classes to current theme (`prose-invert` for dark/oled/slate, standard prose for light/editorial).
+  - **Reader Drawer Features**: Added Web Speech API text-to-speech narration toggle (`Volume2`/`VolumeX`), Web Share API integration with clipboard fallback, background body scroll lock (`overflow-hidden`), persistent font size & serif/sans typography preferences in `localStorage`, and automated read status tracking.
+  - **Read State & Hide Read Filtering**: Added `readArticleIds` and `hideRead` to `UserPreferences` in `src/types/wiretap.ts` and `src/hooks/useUserFeeds.ts`. Implemented instant read status toggling (`CheckCircle2`) and desktop/mobile "Hide Read" visibility toggles in `Firehose.tsx` and `Shell.tsx`.
+  - **Live Keyboard Shortcuts & Smooth Scrolling**: Reconnected `useKeyboardShortcuts` directly inside `src/components/feed/Firehose.tsx` using active `processedArticles`, and bound smooth auto-scroll into view via dynamic `articleRefs` on `j` (next), `k` (previous), `Enter` (open reader), `b` (bookmark), `o` (open external), and `m` (toggle read).
+  - **IndexedDB Batch Performance & Two-Way Sync**: Added `getAllBookmarkIds()` in `src/services/offlineStorage.ts` to replace sequential per-article IDB reads with a single batch `idb-keyval` keys lookup. Added background full-text caching when saving bookmarks and two-way Cloud Firestore synchronization (`syncCloudBookmarks`) for authenticated users in `src/components/bookmarks/BookmarksView.tsx`.
+  - **Search Debouncing**: Added 150ms debouncing on search input in `src/components/layout/Shell.tsx` to prevent CPU re-render thrashing during rapid keystrokes.
+  - **Dependency Pruning**: Removed dead and unused dependencies (`@extractus/article-extractor`, `sanitize-html`, `@types/sanitize-html`, `clsx`, `tailwind-merge`) from `package.json` and `package-lock.json`, shrinking bundle size and eliminating dead imports.
+
 ### [2026-09-13] - Custom Distressed Stencil Brand Logo & Icon Integration
 - **Files Changed**:
   - `public/wiretap-logo.png` (Created)
