@@ -1,0 +1,130 @@
+[
+  {
+    "title": "BBC World",
+    "category": "World News",
+    "tags": ["world", "news"],
+    "feedUrl": "https://feeds.bbci.co.uk/news/world/rss.xml",
+    "siteUrl": "https://www.bbc.com/news/world",
+    "faviconUrl": "https://www.bbc.com/favicon.ico"
+  },
+  {
+    "title": "The Guardian (World)",
+    "category": "World News",
+    "tags": ["world", "investigative"],
+    "feedUrl": "https://www.theguardian.com/world/rss",
+    "siteUrl": "https://www.theguardian.com/world",
+    "faviconUrl": "https://assets.guim.co.uk/images/favicons/44056693fcac3cde6059e7f18477e600/152x152.png"
+  },
+  {
+    "title": "Al Jazeera English",
+    "category": "World News",
+    "tags": ["world", "mideast"],
+    "feedUrl": "https://www.aljazeera.com/xml/rss/all.xml",
+    "siteUrl": "https://www.aljazeera.com",
+    "faviconUrl": "https://www.aljazeera.com/favicon.ico"
+  },
+  {
+    "title": "The Verge",
+    "category": "Tech & Dev",
+    "tags": ["tech", "gadgets"],
+    "feedUrl": "https://www.theverge.com/rss/index.xml",
+    "siteUrl": "https://www.theverge.com",
+    "faviconUrl": "https://www.theverge.com/favicon.ico"
+  },
+  {
+    "title": "Ars Technica",
+    "category": "Tech & Dev",
+    "tags": ["tech", "hardware"],
+    "feedUrl": "https://feeds.arstechnica.com/arstechnica/index",
+    "siteUrl": "https://arstechnica.com",
+    "faviconUrl": "https://cdn.arstechnica.net/favicon.ico"
+  },
+  {
+    "title": "Hacker News (Best)",
+    "category": "Tech & Dev",
+    "tags": ["dev", "startups"],
+    "feedUrl": "https://hnrss.org/best",
+    "siteUrl": "https://news.ycombinator.com",
+    "faviconUrl": "https://news.ycombinator.com/favicon.ico"
+  },
+  {
+    "title": "The A.V. Club",
+    "category": "Movies & TV",
+    "tags": ["entertainment", "reviews"],
+    "feedUrl": "https://www.avclub.com/feed",
+    "siteUrl": "https://www.avclub.com",
+    "faviconUrl": "https://www.avclub.com/favicon.ico"
+  },
+  {
+    "title": "Deadline Hollywood",
+    "category": "Movies & TV",
+    "tags": ["film", "industry"],
+    "feedUrl": "https://deadline.com/feed/",
+    "siteUrl": "https://deadline.com",
+    "faviconUrl": "https://deadline.com/wp-content/themes/pmc-deadline-2019/assets/public/favicon.ico"
+  },
+  {
+    "title": "Collider",
+    "category": "Movies & TV",
+    "tags": ["trailers", "streaming"],
+    "feedUrl": "https://collider.com/feed/",
+    "siteUrl": "https://collider.com",
+    "faviconUrl": "https://static0.colliderimages.com/wordpress/wp-content/themes/valnet-2020-collider/images/favicon/favicon-32x32.png"
+  },
+  {
+    "title": "BBC Sport",
+    "category": "Sports",
+    "tags": ["sports", "news"],
+    "feedUrl": "https://feeds.bbci.co.uk/sport/rss.xml",
+    "siteUrl": "https://www.bbc.com/sport",
+    "faviconUrl": "https://www.bbc.com/favicon.ico"
+  },
+  {
+    "title": "The Guardian (Football)",
+    "category": "Sports",
+    "tags": ["football", "tactics"],
+    "feedUrl": "https://www.theguardian.com/football/rss",
+    "siteUrl": "https://www.theguardian.com/football",
+    "faviconUrl": "https://assets.guim.co.uk/images/favicons/44056693fcac3cde6059e7f18477e600/152x152.png"
+  },
+  {
+    "title": "Fantasy Football Scout",
+    "category": "Sports",
+    "tags": ["fpl", "premier-league"],
+    "feedUrl": "https://www.fantasyfootballscout.co.uk/feed/",
+    "siteUrl": "https://www.fantasyfootballscout.co.uk",
+    "faviconUrl": "https://www.fantasyfootballscout.co.uk/favicon.ico"
+  },
+  {
+    "title": "Quanta Magazine",
+    "category": "Curiosity & Longform",
+    "tags": ["science", "physics"],
+    "feedUrl": "https://www.quantamagazine.org/feed/",
+    "siteUrl": "https://www.quantamagazine.org",
+    "faviconUrl": "https://www.quantamagazine.org/favicon.ico"
+  },
+  {
+    "title": "Aeon Essays",
+    "category": "Curiosity & Longform",
+    "tags": ["essays", "philosophy"],
+    "feedUrl": "https://aeon.co/feed.rss",
+    "siteUrl": "https://aeon.co",
+    "faviconUrl": "https://aeon.co/favicon.ico"
+  },
+  {
+    "title": "Index.hr",
+    "category": "Regional News",
+    "tags": ["croatia", "regional"],
+    "feedUrl": "https://www.index.hr/rss",
+    "siteUrl": "https://www.index.hr",
+    "faviconUrl": "https://www.index.hr/favicon.ico"
+  },
+  {
+    "title": "Telegram.hr",
+    "category": "Regional News",
+    "tags": ["croatia", "longform"],
+    "feedUrl": "https://www.telegram.hr/feed/",
+    "siteUrl": "https://www.telegram.hr",
+    "faviconUrl": "https://www.telegram.hr/favicon.ico"
+  }
+]
