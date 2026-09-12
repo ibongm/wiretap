@@ -2,6 +2,15 @@
 
 All notable changes to the Wiretap project will be documented in this file.
 
+### [2026-09-12] - Serverless-Native Article Extractor & GET Endpoint
+- **Files Changed**:
+  - `api/article.ts` (Modified)
+  - `src/components/reader/ReaderDrawer.tsx` (Modified)
+- **Details**:
+  - Migrated `/api/article` from `@extractus/article-extractor` to native `cheerio` + `sanitize-html` to eliminate `linkedom` serverless crashes (`FUNCTION_INVOCATION_FAILED`).
+  - Added query parameter `GET /api/article?url=...` support with Edge Caching headers (`s-maxage=3600`), resolving POST preflight and CORS redirect issues.
+  - Updated `ReaderDrawer.tsx` to query `/api/article?url=...` via GET, delivering instant full-text article extraction.
+
 ### [2026-09-12] - Article Extraction Resilience & Vercel Routing Hardening
 - **Files Changed**:
   - `package.json` (Modified)

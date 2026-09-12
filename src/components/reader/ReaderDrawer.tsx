@@ -83,11 +83,7 @@ export const ReaderDrawer: React.FC<ReaderDrawerProps> = ({
     setLoading(true);
     setError(null);
 
-    fetch('/api/article', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: articleUrl })
-    })
+    fetch(`/api/article?url=${encodeURIComponent(articleUrl)}`)
       .then(async (res) => {
         const text = await res.text();
         let data: any = null;
