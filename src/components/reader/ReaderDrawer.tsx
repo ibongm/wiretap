@@ -89,15 +89,21 @@ export const ReaderDrawer: React.FC<ReaderDrawerProps> = ({
       body: JSON.stringify({ url: articleUrl })
     })
       .then(async (res) => {
-        const data = await res.json();
+        const text = await res.text();
+        let data: any = null;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          data = { ok: false, error: 'Full article text is protected or unavailable from publisher.' };
+        }
         if (data.ok && data.article) {
           setExtracted(data.article);
         } else {
-          setError(data.error || 'Unable to extract clean article text.');
+          setError(data.error || 'Full article text is protected or unavailable from publisher.');
         }
       })
-      .catch((err) => {
-        setError(err.message || 'Network error extracting article');
+      .catch(() => {
+        setError('Full article text is protected or unavailable from publisher.');
       })
       .finally(() => setLoading(false));
   }, [isOpen, article]);
@@ -357,27 +363,8 @@ export const ReaderDrawer: React.FC<ReaderDrawerProps> = ({
             </div>
           )}
 
-          {/* Extraction Error Fallback */}
-          {error && !loading && (
-            <div className="p-6 bg-slate-800/40 border border-slate-700/60 rounded-2xl mb-8">
-              <p className="text-sm text-slate-300 mb-4">{error}</p>
-              <p className="text-xs text-slate-400 mb-4 leading-relaxed">
-                Wiretap could not extract the full text directly from this publisher's site structure. You can read the original article directly:
-              </p>
-              <a
-                href={articleUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center space-x-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition-colors"
-              >
-                <span>Read on {article.sourceTitle}</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-            </div>
-          )}
-
           {/* Render Extracted Article Content */}
-          {extracted?.content && (
+          {extracted?.content ? (
             <div
               className={`prose prose-invert max-w-none transition-all ${
                 fontFamily === 'serif' ? 'font-serif' : 'font-sans'
@@ -385,17 +372,38 @@ export const ReaderDrawer: React.FC<ReaderDrawerProps> = ({
               style={{ fontSize: `${fontSize}px` }}
               dangerouslySetInnerHTML={{ __html: extracted.content }}
             />
-          )}
+          ) : !loading && (
+            <div className="space-y-6">
+              {/* Notice Banner */}
+              <div className="p-4 bg-slate-800/60 border border-slate-700/60 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-300">
+                <div>
+                  <p className="font-semibold text-white">Syndicated Feed Summary</p>
+                  <p className="text-slate-400 mt-0.5">
+                    {error || "Full text is protected or requires browser viewing directly on publisher."}
+                  </p>
+                </div>
+                <a
+                  href={articleUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold transition-colors shrink-0 shadow-sm"
+                >
+                  <span>Open Full Article</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
 
-          {/* Snippet Fallback if no extracted content yet */}
-          {!extracted?.content && !loading && !error && article.snippet && (
-            <div
-              className={`prose prose-invert max-w-none text-slate-300 leading-relaxed ${
-                fontFamily === 'serif' ? 'font-serif' : 'font-sans'
-              }`}
-              style={{ fontSize: `${fontSize}px` }}
-            >
-              <p>{article.snippet}</p>
+              {/* Snippet / Description */}
+              {article.snippet && (
+                <div
+                  className={`prose prose-invert max-w-none text-slate-200 leading-relaxed ${
+                    fontFamily === 'serif' ? 'font-serif' : 'font-sans'
+                  }`}
+                  style={{ fontSize: `${fontSize}px` }}
+                >
+                  <p>{article.snippet}</p>
+                </div>
+              )}
             </div>
           )}
         </div>

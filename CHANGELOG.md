@@ -2,6 +2,18 @@
 
 All notable changes to the Wiretap project will be documented in this file.
 
+### [2026-09-12] - Article Extraction Resilience & Vercel Routing Hardening
+- **Files Changed**:
+  - `package.json` (Modified)
+  - `vercel.json` (Modified)
+  - `api/article.ts` (Modified)
+  - `src/components/reader/ReaderDrawer.tsx` (Modified)
+- **Details**:
+  - Added Node.js >=20 engine requirement in `package.json` for serverless runtime compatibility with readability/linkedom.
+  - Hardened `vercel.json` rewrite configuration with negative lookahead `/((?!api/.*).*)` to preserve native Serverless execution for `/api/*` routes.
+  - Added 6.5s timeout race in `api/article.ts` to prevent Vercel 10s lambda cutoff, plus Cheerio DOM fallback extraction for sites blocking article-extractor.
+  - Refactored `ReaderDrawer.tsx` to safely handle non-JSON responses and display styled syndicated RSS dispatch summaries when publishers protect full text behind anti-bot barriers.
+
 ### [2026-09-12] - Remove Regional Feeds from Default Subscriptions
 - **Files Changed**:
   - `src/data/starterFeeds.json` (Modified)
