@@ -2,6 +2,19 @@
 
 All notable changes to the Wiretap project will be documented in this file.
 
+### [2026-09-13] - High-Resolution PWA App Icons & Web Manifest Integration
+- **Files Changed**:
+  - `public/wiretap-logo 192x192.png` (Created)
+  - `public/wiretap-logo 512x512.png` (Created)
+  - `public/wiretap-logo-192x192.png` (Created)
+  - `public/wiretap-logo-512x512.png` (Created)
+  - `index.html` (Modified)
+  - `vite.config.ts` (Modified)
+- **Details**:
+  - Added dedicated 192x192 and 512x512 high-resolution brand icons for mobile home screen and desktop PWA installation.
+  - Configured `VitePWA` in `vite.config.ts` to include high-res icons in web app manifest and precache table.
+  - Updated `index.html` `apple-touch-icon` reference to the 192x192 high-resolution icon for crisp iOS bookmarking.
+
 ### [2026-09-13] - Bug Fixes: Browser Shortcut Conflicts, TTS Leaks, Relative Scraped URLs & Sync
 - **Files Changed**:
   - `api/article.ts` (Modified)

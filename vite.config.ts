@@ -82,7 +82,7 @@ export default defineConfig({
     apiDevPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['favicon.svg', 'wiretap-icon.png', 'wiretap-logo.png', 'wiretap-logo-192x192.png', 'wiretap-logo-512x512.png'],
       manifest: {
         name: 'Wiretap — Editorial Intelligence Engine',
         short_name: 'Wiretap',
@@ -92,9 +92,19 @@ export default defineConfig({
         display: 'standalone',
         icons: [
           {
-            src: '/favicon.svg',
-            sizes: '192x192 512x512',
-            type: 'image/svg+xml'
+            src: '/wiretap-logo-192x192.png',
+            sizes: '192x192',
+            type: 'image/png'
+          },
+          {
+            src: '/wiretap-logo-512x512.png',
+            sizes: '512x512',
+            type: 'image/png'
+          },
+          {
+            src: '/wiretap-icon.png',
+            sizes: '512x512',
+            type: 'image/png'
           }
         ]
       }
