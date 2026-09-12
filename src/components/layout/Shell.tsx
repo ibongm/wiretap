@@ -86,9 +86,11 @@ export const Shell: React.FC<ShellProps> = ({
   );
 
   const handleCategoryClick = (cat: string | null) => {
-    onSelectCategory(cat);
-    onSelectTag(null);
-    onSelectFeed?.(null);
+    if (selectedCategory === cat && cat !== null) {
+      onSelectCategory(null);
+    } else {
+      onSelectCategory(cat);
+    }
     onSelectView('firehose');
     setMobileMenuOpen(false);
   };
@@ -98,8 +100,6 @@ export const Shell: React.FC<ShellProps> = ({
       onSelectTag(null);
     } else {
       onSelectTag(tag);
-      onSelectCategory(null);
-      onSelectFeed?.(null);
     }
     onSelectView('firehose');
     setMobileMenuOpen(false);
@@ -110,8 +110,6 @@ export const Shell: React.FC<ShellProps> = ({
       onSelectFeed?.(null);
     } else {
       onSelectFeed?.(feedId);
-      onSelectCategory(null);
-      onSelectTag(null);
     }
     onSelectView('firehose');
     setMobileMenuOpen(false);
@@ -390,12 +388,7 @@ export const Shell: React.FC<ShellProps> = ({
             <div className="flex items-center space-x-2.5 min-w-0">
               {/* Brand Logo Mark Slot */}
               <div
-                onClick={() => {
-                  onSelectCategory(null);
-                  onSelectTag(null);
-                  onSelectFeed?.(null);
-                  onSelectView('firehose');
-                }}
+                onClick={() => handleCategoryClick(null)}
                 className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center shadow-md shadow-indigo-600/30 shrink-0 cursor-pointer hover:bg-indigo-500 transition-colors"
                 title="Full Stream"
               >
@@ -405,12 +398,7 @@ export const Shell: React.FC<ShellProps> = ({
               <div className="min-w-0">
                 <h1 className="text-sm sm:text-base font-bold text-white flex items-center space-x-1.5 truncate">
                   <span
-                    onClick={() => {
-                      onSelectCategory(null);
-                      onSelectTag(null);
-                      onSelectFeed?.(null);
-                      onSelectView('firehose');
-                    }}
+                    onClick={() => handleCategoryClick(null)}
                     className="cursor-pointer hover:text-indigo-300 transition-colors tracking-tight font-black"
                   >
                     WIRETAP

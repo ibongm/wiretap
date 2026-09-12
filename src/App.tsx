@@ -139,6 +139,18 @@ function WiretapApp() {
             selectedIndex={selectedIndex}
             onSelectArticle={setSelectedIndex}
             onOpenArticle={handleOpenArticle}
+            onSelectFeed={(feedId) => {
+              setSelectedFeedId(feedId);
+              setSelectedCategory(null);
+              setSelectedTag(null);
+              setSelectedIndex(0);
+            }}
+            onSelectTag={(tag) => {
+              setSelectedTag(tag);
+              setSelectedFeedId(null);
+              setSelectedCategory(null);
+              setSelectedIndex(0);
+            }}
           />
         ) : (
           <BookmarksView onOpenArticle={handleOpenArticle} />

@@ -151,6 +151,30 @@ export default async function handler(req: any, res: any) {
 
     let cleanContent = '';
     if (chosenEl) {
+      // Deduplicate lead image if chosenEl contains the hero image as its first photo
+      if (leadImage) {
+        const firstImg = $('img', chosenEl).first();
+        if (firstImg.length > 0) {
+          const imgSrc = firstImg.attr('src') || '';
+          const cleanSrc = imgSrc.split('?')[0].replace(/^https?:/, '');
+          const cleanLead = leadImage.split('?')[0].replace(/^https?:/, '');
+
+          const isMatch =
+            imgSrc === leadImage ||
+            cleanSrc === cleanLead ||
+            (cleanSrc.length > 15 && cleanLead.includes(cleanSrc)) ||
+            (cleanLead.length > 15 && cleanSrc.includes(cleanLead));
+
+          if (isMatch) {
+            const parentFig = firstImg.closest('figure');
+            if (parentFig.length > 0) {
+              parentFig.remove();
+            } else {
+              firstImg.remove();
+            }
+          }
+        }
+      }
       cleanContent = sanitizeWithCheerio($, chosenEl);
     } else {
       // Collect substantive paragraphs

@@ -27,6 +27,8 @@ interface FirehoseProps {
   onSelectArticle: (index: number) => void;
   onOpenArticle: (article: NormalizedArticle) => void;
   onBookmarkChanged?: () => void;
+  onSelectFeed?: (feedId: string | null) => void;
+  onSelectTag?: (tag: string | null) => void;
 }
 
 const ITEMS_PER_PAGE = 25;
@@ -41,7 +43,9 @@ export const Firehose: React.FC<FirehoseProps> = ({
   selectedIndex,
   onSelectArticle,
   onOpenArticle,
-  onBookmarkChanged
+  onBookmarkChanged,
+  onSelectFeed,
+  onSelectTag
 }) => {
   const { userProfile } = useAuth();
   const [displayCount, setDisplayCount] = useState<number>(ITEMS_PER_PAGE);
@@ -53,7 +57,7 @@ export const Firehose: React.FC<FirehoseProps> = ({
       if (selectedFeedId && f.id !== selectedFeedId) {
         return false;
       }
-      if (selectedCategory && f.category !== selectedCategory) {
+      if (selectedCategory && f.category?.trim().toLowerCase() !== selectedCategory.trim().toLowerCase()) {
         return false;
       }
       return true;
@@ -315,7 +319,18 @@ export const Firehose: React.FC<FirehoseProps> = ({
                     )}
 
                     {article.smartTags && article.smartTags.length > 0 && (
-                      <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 shadow-sm">
+                      <span
+                        onClick={(e) => {
+                          if (onSelectTag) {
+                            e.stopPropagation();
+                            onSelectTag(article.smartTags![0]);
+                          }
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 shadow-sm ${
+                          onSelectTag ? 'hover:bg-indigo-500/30 cursor-pointer transition-colors' : ''
+                        }`}
+                        title={onSelectTag ? `Filter by #${article.smartTags[0]}` : undefined}
+                      >
                         #{article.smartTags[0]}
                       </span>
                     )}
@@ -338,11 +353,33 @@ export const Firehose: React.FC<FirehoseProps> = ({
                             }}
                           />
                         )}
-                        <span className="font-semibold text-indigo-400 truncate max-w-[140px]">
+                        <span
+                          onClick={(e) => {
+                            if (article.feedId && onSelectFeed) {
+                              e.stopPropagation();
+                              onSelectFeed(article.feedId);
+                            }
+                          }}
+                          className={`font-semibold text-indigo-400 truncate max-w-[140px] ${
+                            article.feedId && onSelectFeed ? 'hover:underline hover:text-indigo-300 cursor-pointer' : ''
+                          }`}
+                          title={article.feedId && onSelectFeed ? `Filter by ${article.sourceTitle}` : undefined}
+                        >
                           {article.sourceTitle}
                         </span>
                         {article.thumbnail && article.smartTags && article.smartTags.length > 0 && (
-                          <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-indigo-500/15 text-indigo-300 border border-indigo-500/20 shrink-0">
+                          <span
+                            onClick={(e) => {
+                              if (onSelectTag) {
+                                e.stopPropagation();
+                                onSelectTag(article.smartTags![0]);
+                              }
+                            }}
+                            className={`px-1.5 py-0.2 rounded text-[10px] font-medium bg-indigo-500/15 text-indigo-300 border border-indigo-500/20 shrink-0 ${
+                              onSelectTag ? 'hover:bg-indigo-500/30 cursor-pointer transition-colors' : ''
+                            }`}
+                            title={onSelectTag ? `Filter by #${article.smartTags[0]}` : undefined}
+                          >
                             #{article.smartTags[0]}
                           </span>
                         )}
@@ -454,13 +491,35 @@ export const Firehose: React.FC<FirehoseProps> = ({
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center space-x-2 text-xs text-slate-400 mb-0.5">
-                      <span className="font-semibold text-indigo-400 truncate max-w-[140px]">
+                      <span
+                        onClick={(e) => {
+                          if (article.feedId && onSelectFeed) {
+                            e.stopPropagation();
+                            onSelectFeed(article.feedId);
+                          }
+                        }}
+                        className={`font-semibold text-indigo-400 truncate max-w-[140px] ${
+                          article.feedId && onSelectFeed ? 'hover:underline hover:text-indigo-300 cursor-pointer' : ''
+                        }`}
+                        title={article.feedId && onSelectFeed ? `Filter by ${article.sourceTitle}` : undefined}
+                      >
                         {article.sourceTitle}
                       </span>
                       {article.smartTags && article.smartTags.length > 0 && (
-                        <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-indigo-500/15 text-indigo-300 border border-indigo-500/20">
+                        <button
+                          onClick={(e) => {
+                            if (onSelectTag) {
+                              e.stopPropagation();
+                              onSelectTag(article.smartTags![0]);
+                            }
+                          }}
+                          className={`px-1.5 py-0.2 rounded text-[10px] font-medium bg-indigo-500/15 text-indigo-300 border border-indigo-500/20 ${
+                            onSelectTag ? 'hover:bg-indigo-500/30 cursor-pointer transition-colors' : ''
+                          }`}
+                          title={onSelectTag ? `Filter by #${article.smartTags[0]}` : undefined}
+                        >
                           #{article.smartTags[0]}
-                        </span>
+                        </button>
                       )}
                       <span>•</span>
                       <span className="text-[11px] text-slate-500">
@@ -522,7 +581,18 @@ export const Firehose: React.FC<FirehoseProps> = ({
                 } ${isRead ? 'opacity-55' : 'opacity-100'}`}
               >
                 <div className="flex items-baseline space-x-3 min-w-0 flex-1 mr-4">
-                  <span className="text-[11px] font-mono font-medium text-indigo-400/90 shrink-0 w-28 truncate">
+                  <span
+                    onClick={(e) => {
+                      if (article.feedId && onSelectFeed) {
+                        e.stopPropagation();
+                        onSelectFeed(article.feedId);
+                      }
+                    }}
+                    className={`text-[11px] font-mono font-medium text-indigo-400/90 shrink-0 w-28 truncate ${
+                      article.feedId && onSelectFeed ? 'hover:underline hover:text-indigo-300 cursor-pointer' : ''
+                    }`}
+                    title={article.feedId && onSelectFeed ? `Filter by ${article.sourceTitle}` : undefined}
+                  >
                     {article.sourceTitle}
                   </span>
                   <h4 className="text-sm text-slate-200 group-hover:text-white font-medium truncate">

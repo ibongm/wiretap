@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import {
   X,
   ExternalLink,
@@ -47,6 +47,60 @@ export const ReaderDrawer: React.FC<ReaderDrawerProps> = ({
   const [copied, setCopied] = useState<boolean>(false);
 
   const contentContainerRef = useRef<HTMLDivElement>(null);
+
+  // Derive active hero lead image URL
+  const heroImageUrl =
+    extracted?.leadImageUrl ||
+    (article && 'thumbnail' in article ? (article as any).thumbnail : null) ||
+    null;
+
+  // Deduplicate lead image from article content if already displayed in hero container
+  const displayContent = useMemo(() => {
+    if (!extracted?.content) return '';
+    if (!heroImageUrl) return extracted.content;
+
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(extracted.content, 'text/html');
+      const firstImg = doc.querySelector('img');
+      if (firstImg) {
+        const src = firstImg.getAttribute('src') || '';
+        const cleanSrc = src.split('?')[0].replace(/^https?:/, '');
+        const cleanHero = heroImageUrl.split('?')[0].replace(/^https?:/, '');
+
+        const isExactOrParamMatch =
+          src === heroImageUrl ||
+          cleanSrc === cleanHero ||
+          (cleanSrc.length > 15 && cleanHero.includes(cleanSrc)) ||
+          (cleanHero.length > 15 && cleanSrc.includes(cleanLeadText(cleanHero)));
+
+        // Check if the image appears at the beginning of the article (before any substantive text)
+        const textBeforeImg = doc.body.textContent?.slice(0, 80).trim() || '';
+        const isLeadingImg =
+          doc.body.firstElementChild === firstImg ||
+          doc.body.firstElementChild?.querySelector('img') === firstImg ||
+          doc.body.firstElementChild?.tagName.toLowerCase() === 'figure' ||
+          textBeforeImg.length < 40;
+
+        if (isExactOrParamMatch || isLeadingImg) {
+          const parentFigure = firstImg.closest('figure');
+          if (parentFigure) {
+            parentFigure.remove();
+          } else {
+            firstImg.remove();
+          }
+          return doc.body.innerHTML;
+        }
+      }
+    } catch (err) {
+      console.error('Failed to deduplicate lead image in ReaderDrawer:', err);
+    }
+    return extracted.content;
+  }, [extracted?.content, heroImageUrl]);
+
+  function cleanLeadText(str: string) {
+    return str.split('#')[0];
+  }
 
   // Check bookmark state and fetch article content
   useEffect(() => {
@@ -333,13 +387,17 @@ export const ReaderDrawer: React.FC<ReaderDrawerProps> = ({
           </div>
 
           {/* Lead Image */}
-          {(extracted?.leadImageUrl || ('thumbnail' in article && article.thumbnail)) && (
+          {heroImageUrl && (
             <div className="mb-8 rounded-2xl overflow-hidden border border-slate-800 bg-slate-950">
               <img
-                src={extracted?.leadImageUrl || ('thumbnail' in article ? article.thumbnail : '')}
+                src={heroImageUrl}
                 alt={article.title}
                 className="w-full max-h-[420px] object-cover"
                 loading="lazy"
+                onError={(e) => {
+                  const parent = (e.target as HTMLElement).parentElement;
+                  if (parent) parent.style.display = 'none';
+                }}
               />
             </div>
           )}
@@ -360,13 +418,13 @@ export const ReaderDrawer: React.FC<ReaderDrawerProps> = ({
           )}
 
           {/* Render Extracted Article Content */}
-          {extracted?.content ? (
+          {displayContent ? (
             <div
               className={`prose prose-invert max-w-none transition-all ${
                 fontFamily === 'serif' ? 'font-serif' : 'font-sans'
               } prose-p:leading-relaxed prose-p:text-slate-200 prose-headings:text-white prose-a:text-indigo-400 prose-img:rounded-xl prose-img:border prose-img:border-slate-800`}
               style={{ fontSize: `${fontSize}px` }}
-              dangerouslySetInnerHTML={{ __html: extracted.content }}
+              dangerouslySetInnerHTML={{ __html: displayContent }}
             />
           ) : !loading && (
             <div className="space-y-6">

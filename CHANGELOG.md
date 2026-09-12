@@ -2,6 +2,20 @@
 
 All notable changes to the Wiretap project will be documented in this file.
 
+### [2026-09-13] - Deduplicate Reader Lead Image & Fix Category/Source Filtering
+- **Files Changed**:
+  - `api/article.ts` (Modified)
+  - `src/components/reader/ReaderDrawer.tsx` (Modified)
+  - `src/components/layout/Shell.tsx` (Modified)
+  - `src/components/feed/Firehose.tsx` (Modified)
+  - `src/App.tsx` (Modified)
+- **Details**:
+  - Resolved cascading state wipeout bug in `Shell.tsx` where selecting a category or subscribed feed immediately triggered adjacent `null` resets in `App.tsx`. Click handlers now only invoke their dedicated callback and support toggle-off deselecting.
+  - Added case-insensitive category matching (`.trim().toLowerCase()`) in `Firehose.tsx` to ensure category filters accurately capture all assigned feeds.
+  - Enabled clickable publisher names and topic tag badges directly on article cards in Cards, Compact, and Minimalist stream modes in `Firehose.tsx`.
+  - Eliminated duplicate lead photos in the Reader Drawer: both server-side (`api/article.ts`) and client-side (`ReaderDrawer.tsx`) detect if the lead hero photo matches or precedes the article body, removing redundant stacked `<figure>` or `<img>` elements before rendering prose typography.
+  - Added graceful `onError` fallback hiding on hero images in `ReaderDrawer.tsx`.
+
 ### [2026-09-13] - Feed Thumbnails, Publisher Favicon Fallbacks, Smart Topic Tags & Mobile Toolbar
 - **Files Changed**:
   - `api/feed.ts` (Modified)
