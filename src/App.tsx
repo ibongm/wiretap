@@ -53,6 +53,7 @@ function WiretapApp() {
   const [readerArticle, setReaderArticle] = useState<NormalizedArticle | BookmarkedArticle | null>(null);
   const [isReaderOpen, setIsReaderOpen] = useState<boolean>(false);
   const [isAddFeedOpen, setIsAddFeedOpen] = useState<boolean>(false);
+  const [addFeedInitialQuery, setAddFeedInitialQuery] = useState<string>('');
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
 
@@ -115,7 +116,10 @@ function WiretapApp() {
         onMarkCategoryRead={(cat) => markCategoryAsRead(cat)}
         onToggleHideRead={toggleHideRead}
         onDeleteFeed={removeFeed}
-        onOpenAddFeed={() => setIsAddFeedOpen(true)}
+        onOpenAddFeed={(query?: string) => {
+          setAddFeedInitialQuery(query || '');
+          setIsAddFeedOpen(true);
+        }}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenAuth={() => setIsAuthOpen(true)}
       >
@@ -146,6 +150,10 @@ function WiretapApp() {
               setSelectedCategory(null);
               setSelectedIndex(0);
             }}
+            onOpenAddFeedWithQuery={(query) => {
+              setAddFeedInitialQuery(query);
+              setIsAddFeedOpen(true);
+            }}
           />
         ) : (
           <BookmarksView
@@ -171,9 +179,14 @@ function WiretapApp() {
         {/* Add Feed Modal */}
         <AddFeedModal
           isOpen={isAddFeedOpen}
-          onClose={() => setIsAddFeedOpen(false)}
+          onClose={() => {
+            setIsAddFeedOpen(false);
+            setAddFeedInitialQuery('');
+          }}
           categories={categories}
           existingTags={existingTags}
+          subscribedFeedUrls={feeds.map((f) => f.feedUrl)}
+          initialSearchQuery={addFeedInitialQuery}
           onAddFeed={addFeed}
         />
 

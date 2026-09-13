@@ -2,6 +2,22 @@
 
 All notable changes to the Wiretap project will be documented in this file.
 
+### [2026-09-13] - In-App Source Search & Discovery Hub
+- **Files Changed**:
+  - `src/App.tsx` (Modified)
+  - `src/components/feed/AddFeedModal.tsx` (Modified)
+  - `src/components/feed/Firehose.tsx` (Modified)
+  - `src/components/layout/Shell.tsx` (Modified)
+  - `src/data/popularFeeds.ts` (Created)
+  - `src/utils/sourceSearch.ts` (Created)
+- **Details**:
+  - Created `src/data/popularFeeds.ts` containing a curated directory of 60+ global verified feeds across 8 categories (Tech & AI, World News, Sports & MMA, Finance & Crypto, Gaming & Esports, Science & Space, Entertainment & Movies, Culture & Longform) with high-res Google favicons and metadata.
+  - Implemented `src/utils/sourceSearch.ts` with multi-token fuzzy matching, domain detection, and category filtering.
+  - Redesigned `AddFeedModal.tsx` into a tabbed discovery hub with instant search, category pill filters, feed cards with 1-click subscription, smart URL paste detection, and fallback to custom feed addition.
+  - Updated `Shell.tsx` with a quick-search shortcut icon in the Subscribed section header and renamed sidebar action button to "Explore & Add Sources" with a Compass icon.
+  - Enhanced `Firehose.tsx` empty search state to offer a direct 1-click button to query the feed directory for the searched keyword.
+  - Connected search query state and subscription synchronization in `App.tsx`.
+
 ### [2026-09-13] - Add Android Digital Asset Links for TWA
 - **Files Changed**:
   - `public/.well-known/assetlinks.json` (Created)

@@ -19,7 +19,8 @@ import {
   Sparkles,
   ArrowUpDown,
   Eye,
-  EyeOff
+  EyeOff,
+  Compass
 } from 'lucide-react';
 import { SubscribedFeed, UserPreferences } from '@/types/wiretap';
 import { useAuth } from '@/context/AuthContext';
@@ -43,7 +44,7 @@ interface ShellProps {
   onMarkCategoryRead: (category: string) => void;
   onToggleHideRead?: () => void;
   onDeleteFeed: (feedId: string) => void;
-  onOpenAddFeed: () => void;
+  onOpenAddFeed: (query?: string) => void;
   onOpenSettings: () => void;
   onOpenAuth: () => void;
   children: React.ReactNode;
@@ -267,12 +268,21 @@ export const Shell: React.FC<ShellProps> = ({
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                   Subscribed ({feeds.length})
                 </span>
-                <button
-                  onClick={() => setEditingFeeds(!editingFeeds)}
-                  className="text-[11px] text-indigo-400 hover:text-indigo-300 transition-colors"
-                >
-                  {editingFeeds ? 'Done' : 'Manage'}
-                </button>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => onOpenAddFeed()}
+                    title="Search & add sources"
+                    className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                  >
+                    <Search className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setEditingFeeds(!editingFeeds)}
+                    className="text-[11px] text-indigo-400 hover:text-indigo-300 transition-colors"
+                  >
+                    {editingFeeds ? 'Done' : 'Manage'}
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-0.5">
@@ -368,8 +378,8 @@ export const Shell: React.FC<ShellProps> = ({
             }}
             className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-md transition-colors"
           >
-            <Plus className="w-4 h-4" />
-            {!sidebarCollapsed && <span>Add Feed Source</span>}
+            <Compass className="w-4 h-4" />
+            {!sidebarCollapsed && <span>Explore & Add Sources</span>}
           </button>
 
           <div className="flex items-center space-x-1">

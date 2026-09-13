@@ -11,7 +11,8 @@ import {
   AlertCircle,
   Loader2,
   ChevronDown,
-  CheckCircle2
+  CheckCircle2,
+  Search
 } from 'lucide-react';
 import {
   saveOfflineBookmark,
@@ -36,6 +37,7 @@ interface FirehoseProps {
   onSelectFeed?: (feedId: string | null) => void;
   onSelectTag?: (tag: string | null) => void;
   onToggleRead?: (articleId: string) => void;
+  onOpenAddFeedWithQuery?: (query: string) => void;
   isModalOpen?: boolean;
   bookmarkVersion?: number;
 }
@@ -56,6 +58,7 @@ export const Firehose: React.FC<FirehoseProps> = ({
   onSelectFeed,
   onSelectTag,
   onToggleRead,
+  onOpenAddFeedWithQuery,
   isModalOpen = false,
   bookmarkVersion = 0
 }) => {
@@ -314,6 +317,15 @@ export const Firehose: React.FC<FirehoseProps> = ({
             ? 'Some articles may have been filtered out by your Bullshit Filter keyword mute list.'
             : 'Try refining your search query or refreshing your feed list.'}
         </p>
+        {searchQuery.trim() && onOpenAddFeedWithQuery && (
+          <button
+            onClick={() => onOpenAddFeedWithQuery(searchQuery.trim())}
+            className="mt-4 inline-flex items-center space-x-2 px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 hover:text-indigo-200 rounded-xl text-xs font-semibold transition-colors shadow-sm"
+          >
+            <Search className="w-3.5 h-3.5" />
+            <span>Search directory for "{searchQuery.trim()}"</span>
+          </button>
+        )}
       </div>
     );
   }
