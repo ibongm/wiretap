@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.vercel.wiretap.twa",
+        "sha256_cert_fingerprints": ["94:35:FA:50:87:9E:91:3E:C7:14:86:22:85:6B:67:9B:F5:46:1F:BC:BE:41:7D:7D:4B:6B:AE:44:D9:D6:70:90"]
+      }
+    }]

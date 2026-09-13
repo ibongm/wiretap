@@ -2,6 +2,12 @@
 
 All notable changes to the Wiretap project will be documented in this file.
 
+### [2026-09-13] - Add Android Digital Asset Links for TWA
+- **Files Changed**:
+  - `public/.well-known/assetlinks.json` (Created)
+- **Details**:
+  - Added Android Digital Asset Links configuration (`.well-known/assetlinks.json`) with SHA-256 certificate fingerprint verification to enable seamless Trusted Web Activity (TWA) deep-linking for package `app.vercel.wiretap.twa`.
+
 ### [2026-09-13] - Update PWA Desktop and Mobile App Store Screenshots
 - **Files Changed**:
   - `public/screenshot-desktop.png` (Modified)
