@@ -2,6 +2,12 @@
 
 All notable changes to the Wiretap project will be documented in this file.
 
+### [2026-09-13] - Harden Vite Watcher with Polling for Windows File System
+- **Files Changed**:
+  - `vite.config.ts` (Modified)
+- **Details**:
+  - Configured `server.watch.usePolling` with an 800ms interval in `vite.config.ts` to prevent Windows filesystem `EBUSY` crashes when screenshots, assets, or images are written or downloaded into the `public/` directory.
+
 ### [2026-09-13] - PWA Screenshots, Standardized Icons & Manifest Expansion
 - **Files Changed**:
   - `public/apple-touch-icon.png` (Created)

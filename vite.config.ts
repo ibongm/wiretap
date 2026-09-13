@@ -146,6 +146,12 @@ export default defineConfig({
       }
     })
   ],
+  server: {
+    watch: {
+      usePolling: true,
+      interval: 800
+    }
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
