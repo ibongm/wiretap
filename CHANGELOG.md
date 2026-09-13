@@ -2,6 +2,13 @@
 
 All notable changes to the Wiretap project will be documented in this file.
 
+### [2026-09-13] - Update PWA Desktop and Mobile App Store Screenshots
+- **Files Changed**:
+  - `public/screenshot-desktop.png` (Modified)
+  - `public/screenshot-mobile.png` (Modified)
+- **Details**:
+  - Refreshed high-resolution desktop and mobile PWA screenshots for accurate preview cards in application stores and browser install banners.
+
 ### [2026-09-13] - Harden Vite Watcher with Polling for Windows File System
 - **Files Changed**:
   - `vite.config.ts` (Modified)
